@@ -1,0 +1,138 @@
+---
+title: "Bayesian Modeling Problem Set 1"
+author: "EEB 187/297"
+date: "Due: 2025-10-09 by 11:30 am over BruinLearn"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The Law of Large Numbers
+_For all labs, we will provide you with a single R Markdown file. Please complete the problem set within a local copy of this file. To turn in, please upload a fully knitted html version. Your name does not need to be on the file, since you will be uploading the file via BruinLearn. Make sure to keep `echo=TRUE`, as appropriate, to show your coding._ 
+
+Imagine a set of random samples of size $n$, drawn from a random variable $Y$. Our first sample, where $n=1$, we call $Y_1$, and it consists of just a single sample $\left\{ y_1\right\}$. Our next sample, where $n = 2$, has an additional sample, so $Y_2 = \left\{y_1,y_2\right\}$; and so on, until $Y_\infty = \left\{y_1,y_2,...,y_\infty\right\}$. The Law of Large Numbers states that as $n$ increases, the arithmetic mean of $Y_i$ approaches the expected value of $Y$, $E(Y)$, which also equals the true population mean, $\mu$. This law is worth exploring more deeply as it is the foundation of much statistical inference, allowing us to learn about populations from mere samples.
+
+1. To explore the Law of Large Numbers, you will create consecutive samples, $Y_1, Y_2,..., Y_i,...,Y_n$, drawn to start from a normal (aka Gaussian) distribution. Let us pick a true population distribution that is normal with a mean of 200 and a standard deviation of 20. From this distribution, randomly sample a single value and store it as the object `Y`.
+```{r}
+set.seed(111)
+E_Y=200 #Population mean
+SD_Y=20 #Population standard deviaion
+Y=rnorm(1,mean=E_Y,sd=SD_Y)
+```
+  
+2. Create a vector of 500 NA’s repeated. Store this vector as the object `mean1`. Replace the first element of `mean1` with the mean of `Y`.^[Since 'Y' is a vector of length 1, its mean is itself!]
+    
+```{r}
+mean1=rep(NA,500)
+mean1[1]=Y
+```
+  
+3. Now, we want to incrementally draw subsequent samples from the distribution, join them with `Y`, and store the mean of the incrementally larger sample into `mean1`. While the Law of Large Numbers assumes we are taking infinite samples, for the sake of illustration, we will only take 500 samples. While we could repeat steps 1–2 500 times, that would be quite tedious to code. Instead, we will create a for-loop to do the hard work, as in Lab 1. We have already created a storage vector (`mean1`), picked an initial sample (`Y`), and stored the mean of that sample as `mean1[1]`. Thus, our for-loop will start its index at `i = 2`. For every value of `i`, from 2 to 500, you should draw a single random value from the distribution described in 1, and concatenate it (`c()`) with the previous value(s) of `Y`, such that for each value of `i`, `Y` is of length `i`. Then, still within the loop, assign the i'th value of `mean1` to be the mean of your i'th sample `Y`. When finished, your for-loop should have replaced your NAs in `mean1` with 500 means of $Y_i$ at ever increasing sample sizes.^[Explaining it takes much more space than doing it! The for-loop should really only contain 2 lines of code.]
+```{r}
+for (i in 2:500){
+  Y=c(Y,rnorm(1,mean=E_Y,sd=SD_Y)) # Draw single valur from the normal distribution and concatenate with the previous values of Y
+  mean1[i]=mean(Y)
+}#
+```
+  
+4. Plot a line of `mean1` versus your sample size (`x = 1:500`). Add a horizontal line in red (`abline()`) at the true population mean. Label the y-axis 'Mean of sample' and the x-axis 'Sample size'. If necessary, set an appropriate y-limit for the plot to display well.
+```{r}
+plot(x=1:500,mean1,type="l")
+abline(h=E_Y,col="red")
+```
+  
+5. Based on the plot in 4, does the Law of Large Numbers hold? Why or why not?
+```{r}
+#In general, the Law of Large Numbers holds. As demonstrated in the figure plotted in 4, when sample sizes increase from 1 to 500, the black line representing the sample mean gradually approaches the true population mean represented by the red line. However, on a closer inspection, small increases in sample size do not always bring the sample mean closer to the population mean (i.e., when sample size increases from 499 to 500, the sample mean decreases from 192.9730 to 227.9164). However, this is likely due to random fluctuations in the sampling process and does not disrupt the general approach to the population mean when sample size increases from 1 to 500.
+```
+  
+6. How would your line of means look if the standard deviation of the population was greater? To explore this, repeat steps 1–3 for a standard deviation of 50. Save this vector of means as `mean2`.
+```{r}
+SD_Y_2=50 #setting a larger standard deviation
+Y_2=rnorm(1,mean=E_Y,sd=SD_Y_2)
+mean2=rep(NA,500)
+mean2[1]=Y_2 
+for (i in 2:500){
+  Y_2=c(Y_2,rnorm(1,mean=E_Y,sd=SD_Y_2))
+  mean2[i]=mean(Y_2)
+} 
+plot(x=1:500,mean2,type="l")
+abline(h=E_Y,col="red")
+
+#The sample mean approaches the population mean slower with a higher initial fluctuation from the population mean
+```
+  
+7. How would your line of means look if the standard deviation of the population was smaller? Repeat steps 1–3 for a standard deviation of 5. Save this vector of means as `mean3`.
+```{r}
+SD_Y_3=5 #setting a smaller standard deviation
+Y_3=rnorm(1,mean=E_Y,sd=SD_Y_2)
+mean3=rep(NA,500)
+mean3[1]=Y_3 
+for (i in 2:500){
+  Y_3=c(Y_3,rnorm(1,mean=E_Y,sd=SD_Y_3))
+  mean3[i]=mean(Y_3)
+} 
+plot(x=1:500,mean3,type="l")
+abline(h=E_Y,col="red")
+##The sample mean approaches the population mean much faster with a lower initial fluctuation from the population mean
+```
+  
+8. Create a single, clear and attractive plot that shows the true population mean and sample means given the three standard deviations. Make sure your mean lines are distinguishable and labeled (e.g., with `legend()`). 
+```{r}
+plot(1:500, mean1, type = "l", col = "red", xlab = "Sample Sizes", ylab = "Sample mean") 
+lines(1:500, mean2, col = "green")
+lines(1:500, mean3, col = "blue")
+abline(h=E_Y,col="black",lwd=2)
+legend("bottomright", legend = c("Population Mean","Standard Deviation=5", "Standard Deviation=20", "Standard Deviation=50"),col = c("black","blue","red", "green" ), lty = 1,lwd=1)
+```
+  
+9. Briefly summarize what we can learn from your plot in 8. What is the relationship between variability in a population and the sample size necessary to accurately estimate the population mean?
+```{r}
+#As the variability in a population increases, the sample size necessary to accurately estimate the population mean increase. As demonstrated in the figure in 8,with standard deviation increases from 5 to 50, the sample mean approaches close to population mean roughly at the sample sizes of 150, 450 and >500 respectively.
+```
+ 
+10. Above, we have illustrated the Law of Large Numbers for a Gaussian distribution, where the expected value is equal to the mean. But what about for other distributions? Repeat steps 1-4 for a Poisson distribution where $\lambda=200$ and for a Gamma distribution with shape = 200 and scale = 1. For both cases, the expected value is still 200.
+```{r}
+poisson_lambda_Y=200 
+Y_pois=rpois(1,lambda=poisson_lambda_Y)
+mean_pois=rep(NA,500)
+mean_pois[1]=Y_pois 
+for (i in 2:500){
+  Y_pois=c(Y_pois,rpois(1,lambda=poisson_lambda_Y))
+  mean_pois[i]=mean(Y_pois)
+} 
+plot(x=1:500,mean_pois,type="l",xlab = "Sample Sizes", ylab = "Sample Mean",main="A Test of LLN with Poisson Distribution")
+abline(h=E_Y,col="red")#
+###########################################################################################################################
+gamma_shape_Y=200 
+gamma_scale_Y=1 
+Y_gamma=rgamma(1, shape=gamma_shape_Y, scale=gamma_scale_Y)
+mean_gamma=rep(NA,500)
+mean_gamma[1]=Y_gamma 
+for (i in 2:500){
+  Y_gamma=c(Y_gamma,rgamma(1, shape=gamma_shape_Y, scale=gamma_scale_Y))
+  mean_gamma[i]=mean(Y_gamma)
+} 
+plot(x=1:500, mean_gamma,type="l",xlab = "Sample Sizes", ylab = "Sample Mean",main="A Test of LLN with Gamma Distribution")
+abline(h=E_Y,col="red")
+```
+ 
+11. Interpret your two plots above in 10 relative to your plot(s) for a normal distribution. Does the Law of Large Numbers seem to hold for means of non-normal distributions? Do you observe any remarkable differences between the plots for these three distributions?
+```{r}
+#The Law of Large Numbers seems to hold for means of non-normal distributions as well. One remarkable difference is that for the Gamma distribution, when sample sizes are small, the sample means are much higher than the population mean, whereas for the other two distributions, the sample means at low sample sizes fluctuate both above and below the population mean.
+```
+ 
+ 12. Finally, imagine that a colleague handed you the plot below (see knitted version). This represents a "real-life" situation, where the colleague has collected samples from an unknown population and is trying to understand the true population mean from means of increasing sample sizes. From strictly looking at this plot, what would you advise is the best estimate of the true population mean? If you had to recommend a single value, which would you choose and why? More generally, is there one best estimate or many equally good estimates? 
+ 
+<img src="https://dl.dropboxusercontent.com/scl/fi/0is078s43cw4sgvb8qios/PS1_problem12.png?rlkey=90pskp423feyhhmu79jgymi8b&" width="500"/>
+ 
+```{r}
+#Looking at the plot, I would recommend 12.4 as the population mean, and this is the single value I would choose. According to the plot, once the population size reaches beyond 400, the sample mean appears stable around the line at 12.4. Thus, it is the number I would recommend.
+
+#More generally, I do not think there exists one “best” estimate. To begin with, as demonstrated in the previous plots, it is not uncommon for the sample mean, even at large sample sizes, to remain consistently above or below the population mean. Secondly, it is impossible to predict whether the sample mean would further fluctuate beyond a sample size of 500. Lastly, as shown in the previous questions and plots, even with large sample sizes, random fluctuations can still cause the sample mean to deviate from the population mean.Therefore, it would be impossible to derive a single best estimate value from the graph. Instead, there could exist many equally good estimates for the population mean.
+    
+```
+    
+ 
