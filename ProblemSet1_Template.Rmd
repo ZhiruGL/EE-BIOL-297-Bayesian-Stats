@@ -105,7 +105,7 @@ for (i in 2:500){
 } 
 plot(x=1:500,mean_pois,type="l",xlab = "Sample Sizes", ylab = "Sample Mean",main="A Test of LLN with Poisson Distribution")
 abline(h=E_Y,col="red")#
-###########################################################################################################################
+##############################################################################################
 gamma_shape_Y=200 
 gamma_scale_Y=1 
 Y_gamma=rgamma(1, shape=gamma_shape_Y, scale=gamma_scale_Y)
