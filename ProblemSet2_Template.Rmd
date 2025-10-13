@@ -84,19 +84,19 @@ legend("topright",legend=c("Expected","Empirical"),col=c("red", "blue"),pch=c(19
 ## B. Groundhog Day
 1. In class and in reading, we have been introduced to the topic of likelihood, defined as $L(\theta|y)$, where for every value of $\theta$ you calculate the likelihood of collecting that data. While normally we use algorithms to do this for us and, for example, provide maximum likelihood parameter estimates, it's useful to try it on our own. To start, we will calculate the likelihood of a single parameter value. We can continue using the groundhog data from A as well as (for ease) a Poisson distribution. Poisson is governed by a single parameter, $\lambda$, and to start we will calculate the likelihood given the data that $\lambda=1$, in other words $L(\lambda=1|y)$. First, calculate the probability mass, given $Poisson(\lambda=1)$, for each of the possible counts, $0,...,5$, and store these 6 values in a single vector.
 ```{r}
-p_mass=c()
+p_list=c()
 for (i in 0:5){
   p=dpois(i,1)
-  p_mass=c(p_mass,p)
+  p_list=c(p_list,p)
 }
-print(p_mass)
+print(p_list)
 ```
  
  2. We have different observed frequencies of each these different possible counts (e.g., A1). To get the likelihood, we have to compute the probability of every single data point, and then calculate the product of all values. For repeated values, this means multiplying the probabily mass by itself as many times as the observed frequency. For example, if a data point $y_j$ was observed 4 times, then: $L(\lambda_i| \left\{y_j,y_j,y_j,y_j\right\})=\prod_{1}^{4}{Pr(y_j|\lambda_i)}=Pr(y_j|\lambda_i)^4$. With this logic, as well as the function `prod()`, calculate the likelihood from the probability masses calculated in B.1 and the observed count frequencies from A.1.
 ```{r}
 lik_all=c()
 for (i in 1:6){
-  lik_indiv=c(rep(p_mass[i],marmots$Frequency[i]))
+  lik_indiv=c(rep(p_list[i],marmots$Frequency[i]))
   lik_all=c(lik_all,lik_indiv)
 }
 lik_val=prod(lik_all)

@@ -783,12 +783,12 @@ probability mass, given <span class="math inline">\(Poisson(\lambda=1)\)</span>,
 possible counts, <span class="math inline">\(0,...,5\)</span>, and store
 these 6 values in a single vector.</li>
 </ol>
-<pre class="r"><code>p_mass=c()
+<pre class="r"><code>p_list=c()
 for (i in 0:5){
   p=dpois(i,1)
-  p_mass=c(p_mass,p)
+  p_list=c(p_list,p)
 }
-print(p_mass)</code></pre>
+print(p_list)</code></pre>
 <pre><code>## [1] 0.367879441 0.367879441 0.183939721 0.061313240 0.015328310 0.003065662</code></pre>
 <ol start="2" style="list-style-type: decimal">
 <li>We have different observed frequencies of each these different
@@ -805,7 +805,7 @@ observed count frequencies from A.1.</li>
 </ol>
 <pre class="r"><code>lik_all=c()
 for (i in 1:6){
-  lik_indiv=c(rep(p_mass[i],marmots$Frequency[i]))
+  lik_indiv=c(rep(p_list[i],marmots$Frequency[i]))
   lik_all=c(lik_all,lik_indiv)
 }
 lik_val=prod(lik_all)
