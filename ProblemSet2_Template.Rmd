@@ -33,9 +33,9 @@ The _method of moments_ is a method of estimation of population parameters, such
   Although multiple options exist, we can start by presuming that these data arise from a Poisson distribution. Why is a Poisson appropriate here? Why might a Poisson not be appropriate, and what might you use instead?
 
 ```{r}
-#The Poisson distribution describes the probability of events occurring in a given unit of time or space. Here we are taking the area of the course surveyed as the "unit of space" and the number of groundhogs counted as the "number of events occurred." More importantly, the Poisson distribution also assumes that the occurrence of one event has no influence on the occurrence of another event, which could be assumed given appropriate sampling strategies are used. Thus, it seems that the Poisson distribution is a suitable distribution to be used here.
+#The Poisson distribution describes the probability of events occurring in a given unit of time or space. Here, we are taking the area of the course surveyed as the “unit of space” and the number of groundhogs counted as the “number of events occurred.” More importantly, the Poisson distribution also assumes that the occurrence of one event has no influence on the occurrence of another event, which could be assumed given that appropriate sampling strategies are used. Thus, it seems that the Poisson distribution is a suitable distribution to be used here.
 
-#However, one major issue is that the Poisson distribution makes the assumption that the expectation and the variance of the distribution are the same. In this case, the calculated sample mean of the dataset is 0.225, and the calculated sample variance of the dataset is 0.724. Assuming that the mean and variance values of our observed data approximate the expected value and variance of the distribution from which the data were derived, the variance is greater than the expected value. Consequently, the Poisson distribution is no longer appropriate. Alternatively, the negative binomial distribution could be used, as it allows the variance to be greater than the mean by including a dispersion parameter, kappa.
+#However, one major issue is that the Poisson distribution assumes that the expectation and the variance of the distribution are the same. In this case, the calculated sample mean of the dataset is 0.225, and the calculated sample variance of the dataset is 0.724. Assuming that the mean and variance values of our observed data approximate the expected value and variance of the distribution from which the data were derived, the variance is greater than the expected value. Consequently, the Poisson distribution is no longer appropriate. Alternatively, the negative binomial distribution could be used, as it allows the variance to be greater than the mean by including a dispersion parameter, kappa.
     
 ```
   
@@ -74,11 +74,11 @@ var_list=((expected_value-marmots$Number)**2)*marmots$Frequency
 var_total=sum(var_list)/sum(marmots$Frequency)
 print(var_total)
 print(expected_value)
-#For Poisson distribution variance is equal to expected value which is 0.225. However the sample variance is 0.724, which is greater than 0.225, thus the empirical frequency distribution is over-dispersed whenn compared to the expected frequnecy distribution.
+#For a Poisson distribution, the variance is equal to the expected value, which is 0.225. However, the sample variance is 0.724, which is greater than 0.225. Thus, the empirical frequency distribution is over-dispersed when compared to the expected frequency distribution.
 plot(marmots$Number,feq_list,col = "red",pch = 19, ylim=c(0,185),xlab="Groundhogs counted", ylab="Frequency", main="Empirical and Expected frequency distribution")
 points(marmots$Number, marmots$Frequency,col ="blue",pch = 17)
 legend("topright",legend=c("Expected","Empirical"),col=c("red", "blue"),pch=c(19, 17))
-# To clarify, an optimal plot for comparison here would be a barplot, however it seems that since the value of the frequency of 1-count and the frequency of 3-6 counts differ too much, bar plots are not visually informative, thus here scatter plot was used. AS the plot demonstrated, the observed frequency (blue triangle) are lower than the expected frequency (red dots) when the number of groundhogs counted are 2; and the observed frequency (blue triangle) are higher then the expected frequency (red dots) when the number of groundhogs counted are high(4-6).Thus it could be concluded that the empirical frequency distribution is over-dispersed when compared to the expected frequency distribution
+# To clarify, an optimal plot for comparison here would be a bar plot. However, it seems that since the value of the frequency of 1-count and the frequency of 3–6 counts differ too much, bar plots are not visually informative or attractive. Thus, a scatter plot was used instead. As the plot demonstrates, the observed frequency (blue triangles) is lower than the expected frequency (red dots) when the number of groundhogs counted is 2, and the observed frequency (blue triangles) is higher than the expected frequency (red dots) when the number of groundhogs counted is high (4–6). Thus, it could be concluded that the empirical frequency distribution is over-dispersed compared to the expected frequency distribution.
 ```
 
 ## B. Groundhog Day
@@ -138,9 +138,9 @@ sapling <- read.delim("https://dl.dropboxusercontent.com/scl/fi/mq2a161kov00rrcc
 kable(head(sapling), "html") %>%kable_styling(full_width = FALSE) %>%column_spec(1, extra_css = "padding-right: 50px;")
     
 # Your answer here
-# Gamma distribution should be used to model response variables that are: non-negative, right-skewed/have increased variance with increased value
-# First of all, the response parameter of the gamma distribution will be non-negative, which is well suited for the purpose of measuring growth.
-# secondly, as demonstrated in the histogram, the distribution is right-skewed, thus gamma distribution would be appropriate as the variance of the response variable would increase together with increased value.
+# Gamma distribution should be used to model response variables that are: non-negative real numbers, right-skewed
+# First of all, the response parameter of the gamma distribution will be non-negative real numbers, which is well suited for the purpose of measuring growth.
+# secondly, as demonstrated in the histogram, the distribution is right-skewed, thus gamma distribution would be appropriate.
 hist(sapling$Growth,xlab="Growth",ylab="Frequency", main="Sapling Growth")
 ```
   
