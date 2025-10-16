@@ -129,7 +129,7 @@ plot(lambda,loglik.lambda)
 abline(v=maxlik_lam,col="red")
 legend("topright", legend="MLL Estimate of Lambda", cex=1,col="red", lwd=2,)
 cat("The value lambda that provide maximum likelihood is", maxlik_lam,"\n")
-#This maximum likelihood value is the same as the sample mean.
+#This maximum likelihood value is the same as the sample mean, which is 0.225.
 ```
     
 ## C. Groundhog food  
