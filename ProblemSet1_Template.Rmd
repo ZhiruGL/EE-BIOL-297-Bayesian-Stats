@@ -18,7 +18,7 @@ Imagine a set of random samples of size $n$, drawn from a random variable $Y$. O
 ```{r}
 set.seed(111)
 E_Y=200 #Population mean
-SD_Y=20 #Population standard deviaion
+SD_Y=20 #Population standard deviation
 Y=rnorm(1,mean=E_Y,sd=SD_Y)
 ```
   
@@ -32,14 +32,14 @@ mean1[1]=Y
 3. Now, we want to incrementally draw subsequent samples from the distribution, join them with `Y`, and store the mean of the incrementally larger sample into `mean1`. While the Law of Large Numbers assumes we are taking infinite samples, for the sake of illustration, we will only take 500 samples. While we could repeat steps 1–2 500 times, that would be quite tedious to code. Instead, we will create a for-loop to do the hard work, as in Lab 1. We have already created a storage vector (`mean1`), picked an initial sample (`Y`), and stored the mean of that sample as `mean1[1]`. Thus, our for-loop will start its index at `i = 2`. For every value of `i`, from 2 to 500, you should draw a single random value from the distribution described in 1, and concatenate it (`c()`) with the previous value(s) of `Y`, such that for each value of `i`, `Y` is of length `i`. Then, still within the loop, assign the i'th value of `mean1` to be the mean of your i'th sample `Y`. When finished, your for-loop should have replaced your NAs in `mean1` with 500 means of $Y_i$ at ever increasing sample sizes.^[Explaining it takes much more space than doing it! The for-loop should really only contain 2 lines of code.]
 ```{r}
 for (i in 2:500){
-  Y=c(Y,rnorm(1,mean=E_Y,sd=SD_Y)) # Draw single valur from the normal distribution and concatenate with the previous values of Y
+  Y=c(Y,rnorm(1,mean=E_Y,sd=SD_Y)) # Draw single value from the normal distribution and concatenate with the previous values of Y
   mean1[i]=mean(Y)
-}#
+}
 ```
   
 4. Plot a line of `mean1` versus your sample size (`x = 1:500`). Add a horizontal line in red (`abline()`) at the true population mean. Label the y-axis 'Mean of sample' and the x-axis 'Sample size'. If necessary, set an appropriate y-limit for the plot to display well.
 ```{r}
-plot(x=1:500,mean1,type="l")
+plot(x=1:500,mean1,type="l",xlab="Sample size",ylab="Mean of sample",main="A Test of LLN with Normal Distribution (sd=20)")
 abline(h=E_Y,col="red")
 ```
   
@@ -58,7 +58,7 @@ for (i in 2:500){
   Y_2=c(Y_2,rnorm(1,mean=E_Y,sd=SD_Y_2))
   mean2[i]=mean(Y_2)
 } 
-plot(x=1:500,mean2,type="l")
+plot(x=1:500,mean2,type="l",xlab="Sample size",ylab="Mean of sample", main="A Test of LLN with Normal Distribution (sd=50)")
 abline(h=E_Y,col="red")
 
 #The sample mean approaches the population mean slower with a higher initial fluctuation from the population mean
@@ -74,23 +74,24 @@ for (i in 2:500){
   Y_3=c(Y_3,rnorm(1,mean=E_Y,sd=SD_Y_3))
   mean3[i]=mean(Y_3)
 } 
-plot(x=1:500,mean3,type="l")
+plot(x=1:500,mean3,type="l",xlab="Sample size",ylab="Mean of sample",main="A Test of LLN with Normal Distribution (sd=5)")
 abline(h=E_Y,col="red")
 ##The sample mean approaches the population mean much faster with a lower initial fluctuation from the population mean
 ```
   
 8. Create a single, clear and attractive plot that shows the true population mean and sample means given the three standard deviations. Make sure your mean lines are distinguishable and labeled (e.g., with `legend()`). 
 ```{r}
-plot(1:500, mean1, type = "l", col = "red", xlab = "Sample Sizes", ylab = "Sample mean") 
+plot(1:500, mean1, type = "l", col = "red",ylim=c(160,270),xlab="Sample size",ylab="Mean of sample",main="A Test of LLN with Normal Distribution with variable sd") 
 lines(1:500, mean2, col = "green")
 lines(1:500, mean3, col = "blue")
-abline(h=E_Y,col="black",lwd=2)
-legend("bottomright", legend = c("Population Mean","Standard Deviation=5", "Standard Deviation=20", "Standard Deviation=50"),col = c("black","blue","red", "green" ), lty = 1,lwd=1)
+abline(h=E_Y,col="black",lwd=2,lty=2)
+legend("bottomright",legend = c("Population Mean","Standard Deviation = 5","Standard Deviation = 20", "Standard Deviation = 50"),col = c("black", "blue", "red", "green"),lty = c(2, 1, 1, 1),lwd = 1)
+
 ```
   
 9. Briefly summarize what we can learn from your plot in 8. What is the relationship between variability in a population and the sample size necessary to accurately estimate the population mean?
 ```{r}
-#As the variability in a population increases, the sample size necessary to accurately estimate the population mean increase. As demonstrated in the figure in 8,with standard deviation increases from 5 to 50, the sample mean approaches close to population mean roughly at the sample sizes of 150, 450 and >500 respectively.
+#As the variability in a population increases, the sample size necessary to accurately estimate the population mean increase. As demonstrated in the figure in 8,with standard deviation increases from 5 to 50, the sample mean approaches close to population mean roughly at the sample sizes of 150, 450 and >500 respectively. Furthermore, as the standard deviation increases from 5 to 50, the fluctuation during the approaching process also increases.
 ```
  
 10. Above, we have illustrated the Law of Large Numbers for a Gaussian distribution, where the expected value is equal to the mean. But what about for other distributions? Repeat steps 1-4 for a Poisson distribution where $\lambda=200$ and for a Gamma distribution with shape = 200 and scale = 1. For both cases, the expected value is still 200.
@@ -103,8 +104,8 @@ for (i in 2:500){
   Y_pois=c(Y_pois,rpois(1,lambda=poisson_lambda_Y))
   mean_pois[i]=mean(Y_pois)
 } 
-plot(x=1:500,mean_pois,type="l",xlab = "Sample Sizes", ylab = "Sample Mean",main="A Test of LLN with Poisson Distribution")
-abline(h=E_Y,col="red")#
+plot(x=1:500,mean_pois,type="l",xlab="Sample size",ylab="Mean of sample",main="A Test of LLN with Poisson Distribution")
+abline(h=E_Y,col="red")
 ##############################################################################################
 gamma_shape_Y=200 
 gamma_scale_Y=1 
@@ -115,7 +116,7 @@ for (i in 2:500){
   Y_gamma=c(Y_gamma,rgamma(1, shape=gamma_shape_Y, scale=gamma_scale_Y))
   mean_gamma[i]=mean(Y_gamma)
 } 
-plot(x=1:500, mean_gamma,type="l",xlab = "Sample Sizes", ylab = "Sample Mean",main="A Test of LLN with Gamma Distribution")
+plot(x=1:500, mean_gamma,type="l",xlab="Sample size",ylab="Mean of sample",main="A Test of LLN with Gamma Distribution")
 abline(h=E_Y,col="red")
 ```
  
