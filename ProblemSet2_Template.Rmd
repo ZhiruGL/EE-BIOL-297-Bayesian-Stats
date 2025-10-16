@@ -180,6 +180,6 @@ p_list=dgamma(x,shape=shape_val,scale=scale_val)
 ```{r}
 hist(sapling$Growth,breaks=50,xlim=c(0,25),xlab="Growth",ylab="Probability", main="Sapling Growth",prob=T)
 lines(x,p_list,lwd=2)
-legend("topright", legend="Expectede probability density", cex=1,col="black", lwd=2)
+legend("topright", legend="Expectede Probability Density", cex=1,col="black", lwd=2)
 ```
  
