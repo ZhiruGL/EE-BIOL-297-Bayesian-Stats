@@ -5,9 +5,7 @@ date: "Due: 2025-10-16 by 11:30 am over BruinLearn"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+
 
 # The Method of Moments
 _For all labs, we will provide you with a single R Markdown file. Please complete the problem set within a local copy of this file. To turn in, please upload a fully knitted html version (not .Rmd). Make sure to keep `echo=TRUE`, as appropriate, to show your coding._ 
@@ -21,44 +19,94 @@ The _method of moments_ is a method of estimation of population parameters, such
 
 
 1. Imagine you conduct a survey of 200 golf courses in western Pennsylvania for groundhogs (_Marmota monax_, aka the woodhuck, aka marmots of the Eastern U.S.). The results of your exhaustive research look like this:
-    ```{r, echo = F}
-        library(kableExtra)
-    library(knitr)
-    marmots <- data.frame("Number" = c(0,1,2,3,4,5), "Frequency" = c(181, 10, 0, 5, 0, 4))
-    kable(marmots, "html", col.names = c("Number of groundhogs","Observed frequency")) %>%
-  kable_styling(full_width = FALSE) %>%
-  column_spec(1, extra_css = "padding-right: 50px;")
-
-    ```
+    <table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
+     <thead>
+      <tr>
+       <th style="text-align:right;"> Number of groundhogs </th>
+       <th style="text-align:right;"> Observed frequency </th>
+      </tr>
+     </thead>
+    <tbody>
+      <tr>
+       <td style="text-align:right;padding-right: 50px;"> 0 </td>
+       <td style="text-align:right;"> 181 </td>
+      </tr>
+      <tr>
+       <td style="text-align:right;padding-right: 50px;"> 1 </td>
+       <td style="text-align:right;"> 10 </td>
+      </tr>
+      <tr>
+       <td style="text-align:right;padding-right: 50px;"> 2 </td>
+       <td style="text-align:right;"> 0 </td>
+      </tr>
+      <tr>
+       <td style="text-align:right;padding-right: 50px;"> 3 </td>
+       <td style="text-align:right;"> 5 </td>
+      </tr>
+      <tr>
+       <td style="text-align:right;padding-right: 50px;"> 4 </td>
+       <td style="text-align:right;"> 0 </td>
+      </tr>
+      <tr>
+       <td style="text-align:right;padding-right: 50px;"> 5 </td>
+       <td style="text-align:right;"> 4 </td>
+      </tr>
+    </tbody>
+    </table>
   Although multiple options exist, we can start by presuming that these data arise from a Poisson distribution. Why is a Poisson appropriate here? Why might a Poisson not be appropriate, and what might you use instead?
 
-```{r}
+
+``` r
 #The Poisson distribution describes the probability of events occurring in a given unit of time or space. Here, we are taking the area of the course surveyed as the “unit of space” and the number of groundhogs counted as the “number of events occurred.” More importantly, the Poisson distribution also assumes that the occurrence of one event has no influence on the occurrence of another event, which could be assumed given that appropriate sampling strategies are used. Thus, it seems that the Poisson distribution is a suitable distribution to be used here.
 
 #However, one major issue is that the Poisson distribution assumes that the expectation and the variance of the distribution are the same. In this case, the calculated sample mean of the dataset is 0.225, and the calculated sample variance of the dataset is 0.724. Assuming that the mean and variance values of our observed data approximate the expected value and variance of the distribution from which the data were derived, the variance is greater than the expected value. Consequently, the Poisson distribution is no longer appropriate. Alternatively, the negative binomial distribution could be used, as it allows the variance to be greater than the mean by including a dispersion parameter, kappa.
-    
 ```
   
 2. Given these data, we can use the Method of Moments to assume that the expected value of our observed data approximates the expected value of the distribution from which the data were derived. Calculate the expected value, which is the average number of groundhogs found across all 200 surveys. Note that these data are provided as frequencies of counts, such that you cannot simply take the average of either column.
-```{r}
+
+``` r
 counts_marmots=marmots$Number*marmots$Frequency
 expected_value=sum(counts_marmots)/sum(marmots$Frequency)
 print(expected_value)
 ```
+
+```
+## [1] 0.225
+```
   
 3. The Poisson is a relatively easy example, because it has one parameter, the rate ($\lambda$), and because $\lambda=E(y)$. In other words, the mean number of groundhogs is the same as the rate. Using the expected value calculated in A.2, calculate the Poisson probability (i.e., using `dpois()`) of observing 0 groundhogs on a single survey. What is the Poisson probability of observing 4 groundhogs? What is the Poisson probability of observing 6 groundhogs?
-```{r}
+
+``` r
 lambda_pois=expected_value
 p_0=dpois(0,lambda_pois)
 p_4=dpois(4,lambda_pois)
 p_6=dpois(6,lambda_pois)
 cat("The probability of observing 0 groundhogs is",p_0,"\n")
+```
+
+```
+## The probability of observing 0 groundhogs is 0.7985162
+```
+
+``` r
 cat("The probability of observing 4 groundhogs is",p_4,"\n")
+```
+
+```
+## The probability of observing 4 groundhogs is 8.527124e-05
+```
+
+``` r
 cat("The probability of observing 6 groundhogs is",p_6,"\n")
+```
+
+```
+## The probability of observing 6 groundhogs is 1.438952e-07
 ```
   
 4. Given this Poisson distribution, what would be the expected observed frequency of 0 to 5 observations for our 200 surveys? In other words, out of 200 surveys, how many would we expect to have 0 groundhogs? 1 groundhog? etc. 
-```{r}
+
+``` r
 feq_list=c()
 for (i in 0:5){
   p=dpois(i,lambda_pois)
@@ -67,23 +115,59 @@ for (i in 0:5){
   cat("The frequency of observing",i,"\n","groundhogs is",feq, "\n")
   }
 ```
+
+```
+## The frequency of observing 0 
+##  groundhogs is 159.7032 
+## The frequency of observing 1 
+##  groundhogs is 35.93323 
+## The frequency of observing 2 
+##  groundhogs is 4.042488 
+## The frequency of observing 3 
+##  groundhogs is 0.3031866 
+## The frequency of observing 4 
+##  groundhogs is 0.01705425 
+## The frequency of observing 5 
+##  groundhogs is 0.0007674411
+```
   
 5. How well does our empirical frequency distribution match the expected frequency distribution? Are our data over-dispersed or under-dispersed? Please justify your answer numerically and/or with a plot.
-```{r}
+
+``` r
 var_list=((expected_value-marmots$Number)**2)*marmots$Frequency
 var_total=sum(var_list)/sum(marmots$Frequency)
 print(var_total)
+```
+
+```
+## [1] 0.724375
+```
+
+``` r
 print(expected_value)
+```
+
+```
+## [1] 0.225
+```
+
+``` r
 #For a Poisson distribution, the variance is equal to the expected value, which is 0.225. However, the sample variance is 0.724, which is greater than 0.225. Thus, the empirical frequency distribution is over-dispersed when compared to the expected frequency distribution.
 plot(marmots$Number,feq_list,col="red",pch=19, ylim=c(0,185),xlab="Groundhogs counted", ylab="Frequency", main="Empirical and Expected frequency distribution")
 points(marmots$Number, marmots$Frequency,col="blue",pch=17)
 legend("topright",legend=c("Expected","Empirical"),col=c("red", "blue"),pch=c(19, 17))
+```
+
+<img src="ProblemSet2_Template_files/figure-html/unnamed-chunk-6-1.png" width="672" />
+
+``` r
 # To clarify, an optimal plot for comparison here would be a bar plot. However, it seems that since the value of the frequency of 1-count and the frequency of 3–6 counts differ too much, bar plots are not visually informative or attractive. Thus, a scatter plot was used instead. As the plot demonstrates, the observed frequency (blue triangles) is lower than the expected frequency (red dots) when the number of groundhogs counted is 2, and the observed frequency (blue triangles) is higher than the expected frequency (red dots) when the number of groundhogs counted is high (4–6). Thus, it could be concluded that the empirical frequency distribution is over-dispersed compared to the expected frequency distribution.
 ```
 
 ## B. Groundhog Day
 1. In class and in reading, we have been introduced to the topic of likelihood, defined as $L(\theta|y)$, where for every value of $\theta$ you calculate the likelihood of collecting that data. While normally we use algorithms to do this for us and, for example, provide maximum likelihood parameter estimates, it's useful to try it on our own. To start, we will calculate the likelihood of a single parameter value. We can continue using the groundhog data from A as well as (for ease) a Poisson distribution. Poisson is governed by a single parameter, $\lambda$, and to start we will calculate the likelihood given the data that $\lambda=1$, in other words $L(\lambda=1|y)$. First, calculate the probability mass, given $Poisson(\lambda=1)$, for each of the possible counts, $0,...,5$, and store these 6 values in a single vector.
-```{r}
+
+``` r
 p_list=c()
 for (i in 0:5){
   p=dpois(i,1)
@@ -91,9 +175,14 @@ for (i in 0:5){
 }
 print(p_list)
 ```
+
+```
+## [1] 0.367879441 0.367879441 0.183939721 0.061313240 0.015328310 0.003065662
+```
  
  2. We have different observed frequencies of each these different possible counts (e.g., A1). To get the likelihood, we have to compute the probability of every single data point, and then calculate the product of all values. For repeated values, this means multiplying the probabily mass by itself as many times as the observed frequency. For example, if a data point $y_j$ was observed 4 times, then: $L(\lambda_i| \left\{y_j,y_j,y_j,y_j\right\})=\prod_{1}^{4}{Pr(y_j|\lambda_i)}=Pr(y_j|\lambda_i)^4$. With this logic, as well as the function `prod()`, calculate the likelihood from the probability masses calculated in B.1 and the observed count frequencies from A.1.
-```{r}
+
+``` r
 lik_all=c()
 for (i in 1:6){
   lik_indiv=c(rep(p_list[i],marmots$Frequency[i]))
@@ -102,15 +191,25 @@ for (i in 1:6){
 lik_val=prod(lik_all)
 cat("The likelihood is", lik_val,"\n")
 ```
+
+```
+## The likelihood is 8.582669e-100
+```
  
  3. If you have correctly calculated the likelihood in B.2, you will have an exceptionally small number ($\times10^{-100}$ in fact!). As explained in class, likelihoods are relative and generally exceptionally small because they are the products of lots of fractions. It is for this reason that many people use the log of the likelihood instead, as it produces numbers that are 'friendlier'. Just to demonstrate, take the $ln$ of the likelihood from B.2, turning it into a log-likelihood ($\ell$).
-```{r}
+
+``` r
 log_lik_val=log(lik_val)
 cat("The log likelihood is", log_lik_val,"\n")
 ```
+
+```
+## The log likelihood is -228.1088
+```
  
  4. In step B.3, you have calculated $\ell(\lambda=1|y)$, or the log-likelihood of a single potential parameter value given our groundhog data. Now, we can repeat this process for many potential values of $\lambda$ to develop a log-likelihood profile. Technically, we would want to do this for every potential value $(0,\infty)$, but for instructional purposes, let's do it just for a sequence of numbers (0.001 to 5, by 0.001 increments), as defined in the code below. Use a for-loop to recreate the steps B.1 through B.3 for every increment of this sequence, keeping your calculations in a storage vector `loglik.lambda`.
-```{r}
+
+``` r
 lambda <- seq(from = 0.001, to = 5, by = 0.001)
 loglik.lambda <- rep(NA, length.out = length(lambda))
 for (i in 1:length(lambda)){
@@ -120,41 +219,128 @@ for (i in 1:length(lambda)){
 ```
   5. Create a likelihood profile by plotting your log-likelihood calculations over the sequence of $\lambda$. What is the maximum likelihood estimate of $\lambda$? Plot a vertical red line at the maximum likelihood estimate. If you have done these steps correctly, you'll notice something very familiar about this maximum likelihood estimate! 
   
-```{r}
+
+``` r
 plot(lambda,loglik.lambda,xlab="Lambda",ylab="Log Likelihood",main="Log Likelihood with Variable Lambda")
 max(loglik.lambda)
+```
+
+```
+## [1] -140.2332
+```
+
+``` r
 index <- which(loglik.lambda== max(loglik.lambda))
 maxlik_lam=lambda[index]
 abline(v=maxlik_lam,col="red")
 legend("topright", legend="MLL Estimate of Lambda", cex=1,col="red", lwd=2,)
+```
+
+<img src="ProblemSet2_Template_files/figure-html/unnamed-chunk-11-1.png" width="672" />
+
+``` r
 cat("The value lambda that provide maximum likelihood is", maxlik_lam,"\n")
+```
+
+```
+## The value lambda that provide maximum likelihood is 0.225
+```
+
+``` r
 #This maximum likelihood value is the same as the sample mean, which is 0.225.
 ```
     
 ## C. Groundhog food  
 1. Load in the dataset “Sapling_Growth1.txt” (`read.delim()` for tab-delimited text files). This dataset presents the results of two field experiments where two tree species are grown in varying degrees of light at two different forested sites. Over one year, the growth of trees is measured relative to the average light availability. Considering the variable 'Growth' as our response variable, why might a gamma distribution be a good choice to describe this random variable?
-```{r}
+
+``` r
 sapling <- read.delim("https://dl.dropboxusercontent.com/scl/fi/mq2a161kov00rrcccukbg/Sapling_Growth1.txt?rlkey=nlr5179948rc98jkbim49bdig&dl")
 kable(head(sapling), "html") %>%kable_styling(full_width = FALSE) %>%column_spec(1, extra_css = "padding-right: 50px;")
-    
+```
+
+<table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:right;"> species </th>
+   <th style="text-align:right;"> site </th>
+   <th style="text-align:right;"> light </th>
+   <th style="text-align:right;"> Growth </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:right;padding-right: 50px;"> 1 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 4.96 </td>
+   <td style="text-align:right;"> 2.917 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;padding-right: 50px;"> 1 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 6.50 </td>
+   <td style="text-align:right;"> 2.575 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;padding-right: 50px;"> 1 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 8.12 </td>
+   <td style="text-align:right;"> 3.442 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;padding-right: 50px;"> 1 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 6.22 </td>
+   <td style="text-align:right;"> 7.933 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;padding-right: 50px;"> 1 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 9.89 </td>
+   <td style="text-align:right;"> 3.908 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;padding-right: 50px;"> 1 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:right;"> 11.96 </td>
+   <td style="text-align:right;"> 4.317 </td>
+  </tr>
+</tbody>
+</table>
+
+``` r
 # Your answer here
 # Gamma distribution should be used to model response variables that are: non-negative real numbers, right-skewed
 # First of all, the response parameter of the gamma distribution will be non-negative real numbers, which is well suited for the purpose of measuring growth.
 # secondly, as demonstrated in the histogram, the distribution is right-skewed, thus gamma distribution would be appropriate.
 hist(sapling$Growth,xlab="Growth",ylab="Frequency", main="Sapling Growth")
 ```
+
+<img src="ProblemSet2_Template_files/figure-html/unnamed-chunk-12-1.png" width="672" />
   
 2. Ignoring that this growth data comes from two species, calculate the mean and variance of the Growth data (i.e., the first and second moments).
-```{r}
+
+``` r
 mean_val=mean(sapling$Growth)
 var_val=var(sapling$Growth)
 cat("The mean of the Growth data is", mean_val,"\n")
+```
+
+```
+## The mean of the Growth data is 5.561746
+```
+
+``` r
 cat("The variance of the Growth data is", var_val,"\n")
+```
+
+```
+## The variance of the Growth data is 12.99969
 ```
   
 3. Use the method of moments to calculate the shape and scale parameters. Here, you have two unknowns (shape and scale), that are related via known equations (see lecture slides) to the first and second moments. Using these two equations, solve for shape and scale. Note: you will either have to look up the equations in Hobbs & Hooten, or, if you're adventurous, remember back to Algebra II where you solved for 2 unknowns given 2 knowns by re-arranging the equations for the mean and variance so that they are in terms of shape or scale, and then substitute one equation into the other. You should be able to define scale (or shape) in terms of only mean and variance. Once you have solved the equation for one parameter, you can substitute it in, and quickly determine the equation for the other parameter. After you have derived the equations that define scale and shape in terms of mean and variance, use R to calculate the empirical values of shape and scale for this dataset and store them as objects.
 
-```{r}
+
+``` r
 #mean=shape*scale
 #variance=shape*scale*scale
 #scale=variance/mean
@@ -162,23 +348,41 @@ cat("The variance of the Growth data is", var_val,"\n")
 shape_val=mean_val**2/var_val
 scale_val=var_val/mean_val
 cat("The shape of the distribution is", shape_val,"\n")
+```
+
+```
+## The shape of the distribution is 2.379521
+```
+
+``` r
 cat("The scale of the distribution is", scale_val,"\n")
+```
+
+```
+## The scale of the distribution is 2.337339
 ```
   
 4. Plot a histogram using `hist()` of the sapling growth. Set `prob=T` so that the y-axis is (probability) density not frequency.
-```{r}
+
+``` r
 hist(sapling$Growth,xlab="Growth",ylab="Probability", main="Sapling Growth",prob=T)    
 ```
+
+<img src="ProblemSet2_Template_files/figure-html/unnamed-chunk-15-1.png" width="672" />
  
 5. For a sequence (`seq()`) of `x` from 0 to 50 by increments 0.02, calculate the gamma probability as derived from a distribution with shape and scale parameters as calculated in C.3. Remember that there are multiple ways to parameterize the gamma distribution. We are using ’scale’ and ’shape’, such that the R command would be: `dgamma(x = , shape =, scale =)`.
-```{r}
+
+``` r
 x=seq(0,50,0.02)
 p_list=dgamma(x,shape=shape_val,scale=scale_val)
 ```
  
 6. Use the `lines()` function with your calculated probabilities from C.5 to add a blue curve to the histogram, showing the expected probability density. The empirical sapling growth should match your calculated gamma distribution very nicely.
-```{r}
+
+``` r
 hist(sapling$Growth,breaks=50,xlim=c(0,25),xlab="Growth",ylab="Probability", main="Sapling Growth",prob=T)
 lines(x,p_list)
 ```
+
+<img src="ProblemSet2_Template_files/figure-html/unnamed-chunk-17-1.png" width="672" />
  
