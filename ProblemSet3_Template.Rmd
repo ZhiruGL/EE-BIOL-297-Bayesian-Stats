@@ -31,19 +31,21 @@ To begin, we need a dataset. Since we are going to show this as a generalizable 
 ```
 
 1. Using `lm()` run a simple linear regression of `penguin ~ ice` and examine the results. What is the effect of `ice` and is it significant? Are these results as you would expect?
-    ```{r}
-    
-    ```
+```{r}
+result=lm(penguin~ice)
+summary(result)
+#The results suggested that when ice cover increases by 1%, the penguin count will increase by 4818.5. Assuming our significance level is the conventional 0.05 this effect is significant as p-value=0.000101 which is lower than 0.05. 
+```
   
 2. In question 1, we assumed that the data `penguin` were generated from a normal distribution, even though we actually generated our count data from a negative binomial. Is this modeling choice acceptable or problematic? Why or why not?
-    ```{r}
-    
-    ```
+```{r}
+#The modeling choice could be problematic. The count data generated from a negative binomial distribution consists of non-negative integers; however, data generated from a normal distribution are continuous and can take any real value, which does not match the range of a negative binomial distribution. Therefore, this modeling choice is inappropriate.  
+```
 
 3. Check yourself by analyzing your results as a GLM with a negative binomial regression. This is not built into the `glm()` function, so you need to use the function `glm.nb()` from the `MASS` package. Do your results and interpretation change? How do your estimated parameters compare to those of the originating formula? If the estimated parameters are not the same, explain mathematically why they should differ.
-    ```{r}
+```{r}
     
-    ```
+```
   
 4. OK, now we will build our regression from Question 1 as a Bayesian model in JAGS. Please refer to the code for Lecture 03-1, as well as lab for Week 4. Start by creating a `list()` of all data to give to JAGS (hint: the list will need 3 variables defined). 
     ```{r}
