@@ -1,0 +1,99 @@
+---
+title: "Bayesian Modeling Problem Set 3"
+author: "EEB 187/297"
+date: "Due: 2025-10-23 by 11:30 am over BruinLearn"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Load needed libraries
+library(MASS)
+library(R2jags)
+library(MCMCvis)
+
+```
+
+# Comparing Frequentist to Bayesian linear models
+_For all labs, we will provide you with a single R Markdown file. Please complete the problem set within a local copy of this file. To turn in, please upload a fully knitted html version. Make sure to keep `echo=TRUE`, as appropriate, to show your coding._ 
+
+In very simple examples, Bayesian analyses will give results that are comparable to frequentist methods, but with some very clear differences. This problem set gives you practice in running linear models while demonstrating this concept
+
+To begin, we need a dataset. Since we are going to show this as a generalizable phenomenon, we will simulate our data. First, we need a response variable, $y_i$. To keep this grounded in ecology, let's imagine our variable as the number of penguins counted in different colonies via drone photography. We wills simulate our response variable as below:
+```{r}
+    set.seed(2025)
+    ice <- rbeta(n = 30, shape1 = 2, shape2 = 2)
+    penguin <- rnbinom(n = length(ice), mu = exp(2 + 2*ice), size = 5)
+    plot(ice, penguin, pch = 16, col = "#0000CCAA", xlim = c(0,1), ylim = c(0, 80),
+         xlab = "% Ice Cover", ylab = "Penguin count (x100)")
+    
+
+```
+
+1. Using `lm()` run a simple linear regression of `penguin ~ ice` and examine the results. What is the effect of `ice` and is it significant? Are these results as you would expect?
+    ```{r}
+    
+    ```
+  
+2. In question 1, we assumed that the data `penguin` were generated from a normal distribution, even though we actually generated our count data from a negative binomial. Is this modeling choice acceptable or problematic? Why or why not?
+    ```{r}
+    
+    ```
+
+3. Check yourself by analyzing your results as a GLM with a negative binomial regression. This is not built into the `glm()` function, so you need to use the function `glm.nb()` from the `MASS` package. Do your results and interpretation change? How do your estimated parameters compare to those of the originating formula? If the estimated parameters are not the same, explain mathematically why they should differ.
+    ```{r}
+    
+    ```
+  
+4. OK, now we will build our regression from Question 1 as a Bayesian model in JAGS. Please refer to the code for Lecture 03-1, as well as lab for Week 4. Start by creating a `list()` of all data to give to JAGS (hint: the list will need 3 variables defined). 
+    ```{r}
+    
+    ```
+  
+5. Now write the JAGS model as a `function() {}` stored as an object `penguin.mod1`. Use 'flat' or vague priors of $N(\mu=0,\tau=0.00001)$ and $Gamma(shape=0.001, rate=0.001)$ where appropriate. Name your intercept `b0` and your slope `b1`.
+    ```{r}
+     
+    ```
+    
+6. Run your model in JAGS using the function `jags()` with your model function and data list. Make sure to store the output into an object (`penguin.fit1`). Run 3 MCMC chains, with 5000 iterations per chain, 1000 burn-in, and a thinning rate of 10. 
+    ```{r, echo = T, results = 'hide', message=FALSE, warning=FALSE}
+    
+    ```
+
+7. Check traceplots for your three parameters using `traceplot()` and plot your slope parameter `b1` using `MCMCvis::MCMCplot()`. 
+    ```{r}
+    
+    ```
+    
+8. Bayesians, of course, do not use frequentist p-values! Rather, we can produce more useful metrics based on summaries of the posterior itself. In a frequentist linear regression, a "significant slope" is one where $Pr(y|\beta_1=0)<0.05$. We can calculate a more directly interpretable Bayesian analog by the degree to which our posterior overlaps (or not) zero. If a posterior is fully positive, then $Pr(y|\theta>0)=1$; or alternatively, if it is fully negative, then $Pr(y|\theta<0)=1$. Using your posterior sample^[use the function `MCMCchains()`] of `b1` calculate, as a proportion, $Pr(y|b1>0)$ and $Pr(y|b1<0)$. How does your inference on this compare to your frequentist p-value calculated in step 1?
+    ```{r}
+    
+    ```
+    
+9. In the previous step, sometimes the calculated posterior probability relative to 0 is calculated as either 1 or 0. How should this be interpreted? Is it correct to interpret such calculations as an actual posterior probability of 0 or 1, or is there a more appropriate interpretation? Explain.
+    ```{r}
+    
+    ```
+    
+10. Use your posterior from 6 to plot the raw data as a scatter plot then use a for-loop to plot the line of best fit from every posterior sample. You should end up with a plot with 1200 semi-transparent lines on it, illustrating the full posterior uncertainty.^[again, look at lecture 03-1 code for assistance]
+    ```{r}
+    
+    ```
+
+11. Your plot in question 10 should highlight a fundamental problem with our model, which is that a normal distribution for $y$ ends up predicting penguin counts <0. Let's re-analyze the Bayesian model using a negative binomial regression instead. You can use the same data object as step 4, but you will need to write new model code (`penguin.mod2`) which uses a negative binomial probability distribution^[a good opportunity to look through the JAGS User Manual provided on BruinLearn]. You will note that JAGS uses a $NegBin(p,r)$ parameterization instead of $NegBin(\mu,\kappa)$ parameterization, which is annoying! This means that while your linear predictor should (as always) estimate the expected value, you will need a deterministic step to convert from $\mu_i$ to $p_i$, where: $p_i=r/(r+\mu_i)$. You should also carefully consider whether you need a link function for your linear predictor statement. Run the model (as per question 6) and check the traceplots to make sure your model has converged. 
+    ```{r}
+
+    ```
+    
+12. If you have written your model correction in 11 and used vague priors, then your estimated parameters should match to the frequentist results you calculated in step 3. Check that now.^[if not, keep working on your model code!]
+    ```{r}
+
+
+    ```
+
+13. Finally, with your Bayesian negative binomial model of penguin counts, create a plot (per question 10) but now predict the posterior lines from the negative binomial model. In plotting your posterior lines, remember to consider the effect of link functions, which means that we can't use simple `abline()'; rather, we will need to create a dense sequence (e.g., n=1000) of x-values for plotting, use the posterior distribution of the linear predictors to estimate the expected values along the full sequence for every posterior draw, and then plot those coordinates.
+    ```{r}
+   
+
+    ```
+
