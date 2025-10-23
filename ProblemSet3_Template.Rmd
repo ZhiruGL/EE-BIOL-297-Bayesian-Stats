@@ -37,7 +37,7 @@ summary(result)
   
 2. In question 1, we assumed that the data `penguin` were generated from a normal distribution, even though we actually generated our count data from a negative binomial. Is this modeling choice acceptable or problematic? Why or why not?
 ```{r}
-#The modeling choice could be problematic. The count data generated from a negative binomial distribution consists of non-negative integers; however, data generated from a normal distribution are continuous and can take any real value, which does not match the range of a negative binomial distribution. Furthermore, negative binomial distribution does not have a constant variance, the variance is increasing quadratic ally with the mean. Comparatively, normal distribution has a constant varaice. Therefore, this modeling choice is inappropriate.  
+#The modeling choice could be problematic. The count data generated from a negative binomial distribution consists of non-negative integers; however, data generated from a normal distribution are continuous and can take any real value, which does not match the range of a negative binomial distribution. Furthermore, negative binomial distribution does not have a constant variance, the variance is increasing quadratic ally with the mean. Comparatively, normal distribution has a constant variance. Therefore, this modeling choice is inappropriate.  
 ```
 
 3. Check yourself by analyzing your results as a GLM with a negative binomial regression. This is not built into the `glm()` function, so you need to use the function `glm.nb()` from the `MASS` package. Do your results and interpretation change? How do your estimated parameters compare to those of the originating formula? If the estimated parameters are not the same, explain mathematically why they should differ.
@@ -116,6 +116,8 @@ for(i in 1:length(MCMCchains(penguin.fit1, "b0"))) {
          col = "#0000FF10")
 }
 abline(a = mean(MCMCchains(penguin.fit1, "b0")), b = mean(MCMCchains(penguin.fit1, "b1")), col = "black", lwd = 4, lty = 3)
+
+legend("topleft",legend = c("Posterior lines", "The Line of Best Fit"),col = c("#0000FF80", "black"),lty = c(1, 3),lwd = c(2, 4),bty = "n")
 ```
 
 11. Your plot in question 10 should highlight a fundamental problem with our model, which is that a normal distribution for $y$ ends up predicting penguin counts <0. Let's re-analyze the Bayesian model using a negative binomial regression instead. You can use the same data object as step 4, but you will need to write new model code (`penguin.mod2`) which uses a negative binomial probability distribution^[a good opportunity to look through the JAGS User Manual provided on BruinLearn]. You will note that JAGS uses a $NegBin(p,r)$ parameterization instead of $NegBin(\mu,\kappa)$ parameterization, which is annoying! This means that while your linear predictor should (as always) estimate the expected value, you will need a deterministic step to convert from $\mu_i$ to $p_i$, where: $p_i=r/(r+\mu_i)$. You should also carefully consider whether you need a link function for your linear predictor statement. Run the model (as per question 6) and check the traceplots to make sure your model has converged. 
@@ -162,5 +164,7 @@ for(i in 1:length(MCMCchains(penguin.fit2, "b0"))) {
   lines(x,exp(MCMCchains(penguin.fit2, "b0")[i]+MCMCchains(penguin.fit2, "b1")[i]*x),col = "#0000FF10") 
 }
 lines(x, exp(MCMCpstr(penguin.fit2)$b0+MCMCpstr(penguin.fit2)$b1*x), col = "black", lwd = 4, lty = 3)
+
+legend("topleft",legend = c("Posterior lines", "The Line of Best Fit"),col = c("#0000FF80", "black"),lty = c(1, 3),lwd = c(2, 4),bty = "n")
 ```
 
