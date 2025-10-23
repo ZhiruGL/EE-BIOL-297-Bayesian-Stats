@@ -26,8 +26,6 @@ To begin, we need a dataset. Since we are going to show this as a generalizable 
     penguin <- rnbinom(n = length(ice), mu = exp(2 + 2*ice), size = 5)
     plot(ice, penguin, pch = 16, col = "#0000CCAA", xlim = c(0,1), ylim = c(0, 80),
          xlab = "% Ice Cover", ylab = "Penguin count (x100)")
-    
-
 ```
 
 1. Using `lm()` run a simple linear regression of `penguin ~ ice` and examine the results. What is the effect of `ice` and is it significant? Are these results as you would expect?
@@ -39,63 +37,130 @@ summary(result)
   
 2. In question 1, we assumed that the data `penguin` were generated from a normal distribution, even though we actually generated our count data from a negative binomial. Is this modeling choice acceptable or problematic? Why or why not?
 ```{r}
-#The modeling choice could be problematic. The count data generated from a negative binomial distribution consists of non-negative integers; however, data generated from a normal distribution are continuous and can take any real value, which does not match the range of a negative binomial distribution. Therefore, this modeling choice is inappropriate.  
+#The modeling choice could be problematic. The count data generated from a negative binomial distribution consists of non-negative integers; however, data generated from a normal distribution are continuous and can take any real value, which does not match the range of a negative binomial distribution. Furthermore, negative binomial distribution does not have a constant variance, the variance is increasing quadratic ally with the mean. Comparatively, normal distribution has a constant varaice. Therefore, this modeling choice is inappropriate.  
 ```
 
 3. Check yourself by analyzing your results as a GLM with a negative binomial regression. This is not built into the `glm()` function, so you need to use the function `glm.nb()` from the `MASS` package. Do your results and interpretation change? How do your estimated parameters compare to those of the originating formula? If the estimated parameters are not the same, explain mathematically why they should differ.
 ```{r}
-    
+glm_result=glm.nb(penguin~ice)
+summary(glm_result)
+# The results have changed. When negative binomial regression is used, the intercept increased from -2.903 to 1.809 and became significant in the regression with p = 1.38e-12, and the parameter of ice cover decreased from 48.185 to 2.279 with p = 3.25e-07, which also suggests that ice cover is a significant predictor of penguin count. The estimated parameter of ice cover has decreased dramatically. In the normal regression model, ice cover is linearly correlated with penguin counts; however, in the negative binomial regression, ice cover is linked to the mean of penguin counts through a log link function. Thus, the parameter estimated for ice cover will decrease given this change. For the intercept, it is used to predict the mean of the response variable (penguin counts) when the predictor variable (ice cover) equals zero. In the normal linear regression, this value could be any real number, as ice cover is directly related to penguin counts in a linear form. However, in the negative binomial regression, the intercept predicts the log transformation of the mean instead of the mean itself. Given that in our dataset all the count numbers are  greater than 1, the estimated value of the intercept will be positive when the estimated parameter of ice cover is 0.
 ```
   
 4. OK, now we will build our regression from Question 1 as a Bayesian model in JAGS. Please refer to the code for Lecture 03-1, as well as lab for Week 4. Start by creating a `list()` of all data to give to JAGS (hint: the list will need 3 variables defined). 
-    ```{r}
-    
-    ```
+```{r}
+jags.data <- list(
+  penguin_count=penguin,
+  ice_cover=ice,
+  n.obs=length(penguin)
+  ) 
+```
   
 5. Now write the JAGS model as a `function() {}` stored as an object `penguin.mod1`. Use 'flat' or vague priors of $N(\mu=0,\tau=0.00001)$ and $Gamma(shape=0.001, rate=0.001)$ where appropriate. Name your intercept `b0` and your slope `b1`.
-    ```{r}
-     
-    ```
+```{r}
+penguin.mod1 <- function() {
+  tau ~ dgamma(0.001, 0.001)
+  b0 ~ dnorm(0, 0.001)
+  b1 ~ dnorm(0, 0.001)
+
+  for(i in 1:n.obs) {
+    penguin_count[i] ~ dnorm(mu[i], tau)
+    mu[i] <- b0 + b1*ice_cover[i]
+  }  
+}  
+
+
+```
     
 6. Run your model in JAGS using the function `jags()` with your model function and data list. Make sure to store the output into an object (`penguin.fit1`). Run 3 MCMC chains, with 5000 iterations per chain, 1000 burn-in, and a thinning rate of 10. 
-    ```{r, echo = T, results = 'hide', message=FALSE, warning=FALSE}
-    
-    ```
+```{r, echo = T, results = 'hide', message=FALSE, warning=FALSE}
+penguin.fit1<- jags(data = jags.data, 
+                    parameters.to.save=c("b0","b1","tau"),
+                    model.file=penguin.mod1,
+                    n.chains=3,
+                    n.iter=5000,
+                    n.burnin=1000,
+                    n.thin=10)
+```
 
 7. Check traceplots for your three parameters using `traceplot()` and plot your slope parameter `b1` using `MCMCvis::MCMCplot()`. 
-    ```{r}
-    
-    ```
+```{r}
+traceplot(penguin.fit1)
+#the plot looks like a hairy caterpillar, hence it is very likely the model has converged
+MCMCvis::MCMCplot(penguin.fit1,params="b1")
+```
     
 8. Bayesians, of course, do not use frequentist p-values! Rather, we can produce more useful metrics based on summaries of the posterior itself. In a frequentist linear regression, a "significant slope" is one where $Pr(y|\beta_1=0)<0.05$. We can calculate a more directly interpretable Bayesian analog by the degree to which our posterior overlaps (or not) zero. If a posterior is fully positive, then $Pr(y|\theta>0)=1$; or alternatively, if it is fully negative, then $Pr(y|\theta<0)=1$. Using your posterior sample^[use the function `MCMCchains()`] of `b1` calculate, as a proportion, $Pr(y|b1>0)$ and $Pr(y|b1<0)$. How does your inference on this compare to your frequentist p-value calculated in step 1?
-    ```{r}
-    
-    ```
+```{r}
+b1_pos=MCMCchains(penguin.fit1,params="b1")
+MCMCvis::MCMCsummary(penguin.fit1,params="b1")
+pos_pro=mean(b1_pos>0)
+neg_pro=mean(b1_pos<0)
+cat("The positive proportion is", pos_pro, "\n")
+cat("The negative proportion is", neg_pro, "\n")
+#The value of b1 is strictly positive, since it does not overlap with zero, then it suggests that the effect of ice cover in predicting penguin counts in the negative binomial regression is significant, and the effect is positive. Furthermore, according to the MCMCsummary output, the mean value of b1 in the posterior distribution is 42.839. Thus, both conclusion align with our frequents p-value calculated in step 1, in which the estimated value of b1 is 48.185 and the p value is 0.000101 which is less than 0.05.
+```
     
 9. In the previous step, sometimes the calculated posterior probability relative to 0 is calculated as either 1 or 0. How should this be interpreted? Is it correct to interpret such calculations as an actual posterior probability of 0 or 1, or is there a more appropriate interpretation? Explain.
-    ```{r}
-    
-    ```
+```{r}
+#It cannot be considered as an actual posterior probability of 0 or 1. This is because the 1 and 0 calculated simply mean that all posterior samples of b1 are either positive or negative given the calculation. However, since MCMC only samples the posterior distribution instead of analytically describing the distribution, this result only means that the samples we have drawn from the posterior are either positive or negative. Thus, it is always possible that if we draw more samples, there could be some values that fall below or beyond zero, hence causing the probability to be lower than 1 or higher than 0. A more appropriate interpretation would be that: "All the samples drawn from the posterior distribution of b1 lie above/below zero; thus, this suggests that the effect of ice cover on penguin counts is significantly positive/negative."
+```
     
 10. Use your posterior from 6 to plot the raw data as a scatter plot then use a for-loop to plot the line of best fit from every posterior sample. You should end up with a plot with 1200 semi-transparent lines on it, illustrating the full posterior uncertainty.^[again, look at lecture 03-1 code for assistance]
-    ```{r}
-    
-    ```
+```{r}
+plot(ice, penguin, xlab = "Ice cover", ylab = "Penguin counts",main="Normal Lineaer Regression")
+
+for(i in 1:length(MCMCchains(penguin.fit1, "b0"))) {
+    abline(a = MCMCchains(penguin.fit1, "b0")[i], 
+         b = MCMCchains(penguin.fit1, "b1")[i], 
+         col = "#0000FF10")
+}
+abline(a = mean(MCMCchains(penguin.fit1, "b0")), b = mean(MCMCchains(penguin.fit1, "b1")), col = "black", lwd = 4, lty = 3)
+```
 
 11. Your plot in question 10 should highlight a fundamental problem with our model, which is that a normal distribution for $y$ ends up predicting penguin counts <0. Let's re-analyze the Bayesian model using a negative binomial regression instead. You can use the same data object as step 4, but you will need to write new model code (`penguin.mod2`) which uses a negative binomial probability distribution^[a good opportunity to look through the JAGS User Manual provided on BruinLearn]. You will note that JAGS uses a $NegBin(p,r)$ parameterization instead of $NegBin(\mu,\kappa)$ parameterization, which is annoying! This means that while your linear predictor should (as always) estimate the expected value, you will need a deterministic step to convert from $\mu_i$ to $p_i$, where: $p_i=r/(r+\mu_i)$. You should also carefully consider whether you need a link function for your linear predictor statement. Run the model (as per question 6) and check the traceplots to make sure your model has converged. 
-    ```{r}
+```{r}
+penguin.mod2 <- function() {
+  
+  ## Priors
+  size_disp ~ dgamma(0.001, 0.001)
+  b0 ~ dnorm(0, 0.00001)
+  b1 ~ dnorm(0, 0.00001)
+  
+  ## Process model
+  for(i in 1:n.obs) {
+    penguin_count[i] ~ dnegbin(p[i], size_disp)
+    mu[i]= exp(b0 + b1*ice_cover[i])
+    p[i]= size_disp/(size_disp+mu[i])
+  }  
+} 
 
-    ```
+penguin.fit2<- jags(data = jags.data, 
+                    parameters.to.save=c("b0","b1","size_disp"),
+                    model.file=penguin.mod2,
+                    n.chains=3,
+                    n.iter=5000,
+                    n.burnin=1000,
+                    n.thin=10)
+traceplot(penguin.fit2)
+#the plot looks like a hairy caterpillar, hence it is very likely the model has converged
+```
     
 12. If you have written your model correction in 11 and used vague priors, then your estimated parameters should match to the frequentist results you calculated in step 3. Check that now.^[if not, keep working on your model code!]
-    ```{r}
-
-
-    ```
+```{r}
+MCMCvis::MCMCplot(penguin.fit2,params="b0")
+MCMCvis::MCMCplot(penguin.fit2,params="b1")
+MCMCvis::MCMCsummary(penguin.fit2)
+#According to the plot, and the summary the estimated parameter values do match closely with the calculated value in step 3
+```
 
 13. Finally, with your Bayesian negative binomial model of penguin counts, create a plot (per question 10) but now predict the posterior lines from the negative binomial model. In plotting your posterior lines, remember to consider the effect of link functions, which means that we can't use simple `abline()'; rather, we will need to create a dense sequence (e.g., n=1000) of x-values for plotting, use the posterior distribution of the linear predictors to estimate the expected values along the full sequence for every posterior draw, and then plot those coordinates.
-    ```{r}
-   
-
-    ```
+```{r}
+plot(ice, penguin, xlab = "Ice cover", ylab = "Penguin counts",main="Negative Bionomial Regression")
+x=seq(0,1,0.001)
+for(i in 1:length(MCMCchains(penguin.fit2, "b0"))) { 
+  lines(x,exp(MCMCchains(penguin.fit2, "b0")[i]+MCMCchains(penguin.fit2, "b1")[i]*x),col = "#0000FF10") 
+}
+lines(x, exp(MCMCpstr(penguin.fit2)$b0+MCMCpstr(penguin.fit2)$b1*x), col = "black", lwd = 4, lty = 3)
+```
 
