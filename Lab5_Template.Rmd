@@ -1,0 +1,271 @@
+---
+title: "Bayesian Modeling Lab 05"
+author: "EEB 187/297"
+date: "2025-10-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+# Lab 5. Building healthy and robust Bayesian models
+_For all labs, we will provide you with a single R Markdown file (like this file). It is suggested that you add R code directly within a local copy of this markdown file so that you can produce a single document that records your progress, your code, and your output._
+
+This week, we will continue to build comfort with Bayesian models, including prior and posterior checks. We will also introduce two new empirical ecological datasets for which we can build GLMs. 
+
+## A. Plants grown in shadehouses
+This dataset shows the experimental growth of plants in shadehouses. Plants were placed in 5 shadehouses and assigned either a high light (L) or low light (D) treatments. Each shadehouse has 4 seedlings with each of three damage treatments (0, 0.1, 0.25), for a total of 12 seedlings per shadehouse. The dataset looks at the number of survivors and deaths for each combination of damage and shadehouse.
+```{r, echo = F, message = F}
+    library(kableExtra)
+    library(knitr)
+    library(MCMCvis)
+    library(R2jags)
+plants <- read.csv("https://dl.dropboxusercontent.com/scl/fi/9a13w9ywvl56owhmgisg3/plantdamage_surv.csv?rlkey=pxdxewdl80ekacw4460rsi47m&")
+kable(head(plants), "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+```
+Data in this table include: (a) treatment (Light vs Dark); (b) leaf damage score; (c) survivors (out of 4); and (d) deaths (out of 4). Note that Survivors + Deaths = 4 (such that the Deaths column is redundant).
+
+1. Our goal is to build a GLM using JAGS to determine the effect of light, leaf damage, and their interaction on plant survival. Start by drawing a DAG to help you out.
+    ```{r}
+
+    ```
+    
+2. Create the JAGS data list. Consider your response variable carefully, including whether every variable in the dataframe is necessary. You will also need to consider the formulation of covariates if they are categorical, as JAGS does not re-interpret factors into contrasts automatically.
+
+```{r}
+plants$light_cat=ifelse(plants$light == "L",1,0)
+plants$interaction=plants$light_cat*plants$damage
+#in this case, b1 will be corresponding with light and the intercept will be with darkness
+jags_data<-list(
+  y=plants$survs,
+  light=plants$light_cat,
+  damage=plants$damage,
+  interaction=plants$interaction,
+  n.obs=nrow(plants)
+)
+```
+
+3. Construct your JAGS model and store it as a function. For normally distributed regression priors, use $N(0, \tau=0.0001)$.
+```{r}
+plant.mod1<-function(){
+  b0 ~ dnorm(0,0.0001)
+  b_light ~ dnorm(0,0.0001)
+  b_damage ~ dnorm(0,0.0001)
+  b_interaction ~ dnorm(0,0.0001)
+  for(i in 1:n.obs) {
+    y[i] ~ dbinom(p[i],4)
+    logit(p[i]) <- b0 +  b_light*light[i]+b_damage*damage[i]+b_interaction*interaction[i]
+  }  
+}  
+```
+  
+4. Run your model! Use 3 chains, 20,000 iterations with 5,000 burn-in and a thin-rate of 10.
+```{r}
+plants.fit1<-jags(data=jags_data,parameters.to.save=c("b0", "b_light","b_damage","b_interaction"),model.file=plant.mod1,
+                    n.chains=3,
+                    n.iter=20000,
+                    n.burnin=5000,
+                    n.thin=10)
+```
+  
+5. Examine your model, what can we learn from it? 
+```{r}
+MCMCvis::MCMCsummary(plants.fit1)
+```
+  
+6. Let's check our traceplots and conduct a Prior-Posterior Overlap (PPO) check using `MCMCtrace()` as shown in Lecture 04-2. 
+```{r, warning=FALSE}
+#traceplot(plants.fit1)
+PR=rnorm(15000,mean=0,sd=sqrt(1/0.0001))
+MCMCtrace(plants.fit1,params="b0",priors=PR,pdf=FALSE)
+MCMCtrace(plants.fit1,params="b_light",priors=PR,pdf=FALSE)
+MCMCtrace(plants.fit1,params="b_damage",priors=PR,pdf=FALSE)
+MCMCtrace(plants.fit1,params="b_interaction",priors=PR,pdf=FALSE)
+```
+  
+7. In Lecture 04-1, you learned how sometimes when certain link functions are used (particularly logit-links), 'vague' priors on the logit-scale become highly informative on the probability scale! Since our binomial model should use a logit-link to model the probability of seedling survival, it's important that we check our priors and our posteriors. We will need to use `MCMCchains()` to extract our parameter posteriors, then the function `plogis()` to conduct an inverse-logit transformation (i.e., switching our posteriors from logit-scale to probability-scale). We can then feed these probability-scale posteriors to `MCMCtrace()`. For a PPO, we can also use `plogis()` on our normal prior draws to plot the prior with the posterior, all on the probability scale using `MCMCtrace()`. What can we learn now from our PPO? Are our priors flat within the region of the posterior?
+```{r, warning=FALSE}
+b0_pos=MCMCchains(plants.fit1,params="b0")
+blight_pos=MCMCchains(plants.fit1,params="b_light")
+bdamage_pos=MCMCchains(plants.fit1,params="b_damage")
+binteraction_pos=MCMCchains(plants.fit1,params="b_interaction")
+
+
+b0_pos_trans=plogis(b0_pos)
+blight_pos_trans=plogis(blight_pos)
+bdamage_pos_trans=plogis(bdamage_pos)
+binteraction_pos_trans=plogis(binteraction_pos)
+PR_trans=plogis(PR)
+
+MCMCtrace(b0_pos_trans,priors=PR_trans,pdf=FALSE)
+MCMCtrace(blight_pos_trans,priors=PR_trans,pdf=FALSE)
+MCMCtrace(bdamage_pos_trans,priors=PR_trans,pdf=FALSE)
+MCMCtrace(binteraction_pos_trans,priors=PR_trans,pdf=FALSE)
+```
+  
+8. Hopefully you've realized that our priors were actually quite informative on the probability scale. Using what we learned from Lecture 04-1, re-write your JAGS model using more truly vague normal priors. Run the model as step 4.
+```{r}
+plant.mod2<-function(){
+  b0 ~ dnorm(0,0.444)
+  b_light ~ dnorm(0,0.444)
+  b_damage ~ dnorm(0,0.444)
+  b_interaction ~ dnorm(0,0.444)
+  for(i in 1:n.obs) {
+    y[i] ~ dbinom(p[i],4)
+    y.new[i] ~ dbinom(p[i],4)
+    logit(p[i]) <- b0 +  b_light*light[i]+b_damage*damage[i]+b_interaction*interaction[i]
+  }  
+}
+
+plants.fit2<-jags(data=jags_data,parameters.to.save=c("b0", "b_light","b_damage","b_interaction","y.new"),model.file=plant.mod2,
+                    n.chains=3,
+                    n.iter=20000,
+                    n.burnin=5000,
+                    n.thin=10)
+
+```
+  
+9. Re-evaluate the PPO for your model given the new priors. How different are the posteriors now versus the first model?
+```{r, warning=FALSE}
+b0_pos_new=MCMCchains(plants.fit2,params="b0")
+blight_pos_new=MCMCchains(plants.fit2,params="b_light")
+bdamage_pos_new=MCMCchains(plants.fit2,params="b_damage")
+binteraction_pos_new=MCMCchains(plants.fit2,params="b_interaction")
+
+
+b0_pos_trans_new=plogis(b0_pos_new)
+blight_pos_trans_new=plogis(blight_pos_new)
+bdamage_pos_trans_new=plogis(bdamage_pos_new)
+binteraction_pos_trans_new=plogis(binteraction_pos_new)
+PR_new=rnorm(15000,0,sd=sqrt(1/0.444))
+PR_trans_new=plogis(PR_new)
+
+MCMCtrace(b0_pos_trans_new,priors=PR_trans_new,pdf=FALSE)
+MCMCtrace(blight_pos_trans_new,priors=PR_trans_new,pdf=FALSE)
+MCMCtrace(bdamage_pos_trans_new,priors=PR_trans_new,pdf=FALSE)
+MCMCtrace(binteraction_pos_trans_new,priors=PR_trans_new,pdf=FALSE)
+```
+  
+10. Before we finish with our plant dataset, let's do a Posterior Predictive Check! As described in Lecture 04-2, we first need to calculate an observed test statistic. You're welcome to derive any test statistic you want, but let's keep it simple here and calculate the average number of surviving seedlings per plot. Calculate this test statistic $T(y)$ below and store it as `avg.surv`.
+```{r}
+sim_val=MCMCchains(plants.fit2,params="y.new")
+avg.surv=mean(plants$survs)
+```
+  
+11. Now the fun part! Copy in your JAGS code from step 8, but replicate the line which models the response variable, changing the variable name, as shown in Lecture 04-2. Run the model (note: monitoring just your replicated data makes things more straightforward later).
+```{r}
+plant.mod2<-function(){
+  b0 ~ dnorm(0,0.444)
+  b_light ~ dnorm(0,0.444)
+  b_damage ~ dnorm(0,0.444)
+  b_interaction ~ dnorm(0,0.444)
+  for(i in 1:n.obs) {
+    y[i] ~ dbinom(p[i],4)
+    y.new[i] ~ dbinom(p[i],4)
+    logit(p[i]) <- b0 +  b_light*light[i]+b_damage*damage[i]+b_interaction*interaction[i]
+  }  
+}
+
+plants.fit2<-jags(data=jags_data,parameters.to.save=c("b0", "b_light","b_damage","b_interaction","y.new"),model.file=plant.mod2,
+                    n.chains=3,
+                    n.iter=20000,
+                    n.burnin=5000,
+                    n.thin=10)
+```
+  
+12. Use the posterior distribution of your replicated data to derive the posterior distribution of $T(y_{rep})$. Plot the posterior for $T(y_{rep})$, and add the observed value $T(y)$ as a vertical line.
+```{r}
+library(ggplot2)
+sim_avg <- apply(sim_val, 1, mean)
+hist(sim_avg,breaks=20)
+abline(v = mean(avg.surv), col = "red", lwd = 2, lty = 2)
+ggplot() +
+  geom_histogram(aes(x = sim_avg), bins = 30, fill = "skyblue") +
+  geom_vline(xintercept = avg.surv, color = "red", linetype = "dashed")
+
+```
+  
+13. The posterior predictive distribution plot will give a good sense of whether the model is adequate, but calculating a Bayesian p-value will provide a formal test. Remember, if the calculated value is <0.10 or >0.90 then it indicates a lack of fit. What can we conclude about the fit of our model?
+```{r}
+p_value <- mean(T_rep >= avg.surv)
+p_value
+```
+
+## B. Caterpillars in forest fragments
+The second dataset is from 10 forest fragments of varying size. The purpose of the study was to determine if the abundances of specialist and generalist caterpillars responded differently to fragment size. Each row is a species found in a fragment (species names are not given in the dataset).
+```{r, echo = F, message = F}
+cats <- read.csv("https://dl.dropboxusercontent.com/scl/fi/d39pjirvzx4lmlz3ddw29/caterpillars.csv?rlkey=bv0xhs8y6r0ma0i3k6f5sh06s&")
+kable(head(cats), "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+```
+Data in this table include: (a) Forest name; (b) Fragment size (in hectares); (c) whether each species observed was a specialist or generalist; and (d) abundance of each observed species. 
+  
+1. We are interested in determining the effect of fragment size, species diet, and
+ their interaction on caterpillar abundance. Start by drawing a dag.
+```{r}
+cats$diet_cat=ifelse(cats$Diet == "Speciaist",1,0)
+cats$interaction=cats$diet_cat*cats$SizeHa
+
+```
+  
+2. Define your data list to give to JAGS
+```{r}
+jags_data_cat<-list(
+  count=cats$Abundance,
+  diet=cats$diet_cat,
+  size=cats$SizeHa,
+  interaction=cats$interaction,
+  n.obs=nrow(cats)
+)
+```
+  
+3. Write your JAGS code. Assume, for now, that there is no overdispersion. You might as well save yourself an extra step and build in a PPD for abundance.
+```{r}
+cats.mod<-function(){
+  b0 ~ dnorm(0,0.0001)
+  bdiet ~ dnorm(0,0.0001)
+  bsize ~ dnorm(0,0.0001)
+  binteraction ~ dnorm(0,0.0001)
+  for(i in 1:n.obs) {
+    count[i] ~ dpois(lam[i])
+    count.new[i] ~ dpois(lam[i])
+    lam[i] <- exp(b0+bdiet*diet[i]+bsize*size[i]+binteraction*interaction[i])
+  }  
+}
+
+```
+  
+4. Run your model in JAGS and examine the results.
+```{r}
+cats.fit<-jags(data=jags_data_cat,parameters.to.save=c("b0", "bdiet","bsize","binteraction","count.new"),model.file=cats.mod,
+                    n.chains=3,
+                    n.iter=20000,
+                    n.burnin=5000,
+                    n.thin=10) 
+```
+  
+5. When you look at your parameters, you may notice that the posterior for your parameter for fragment size (e.g., b1) is _very_ small. This is because fragment size is in units of hectares, and many of these fragments are quite large. Therefore, the model is trying to fit the average change in log(abundance) for the addition of a single hectare -- no wonder the slope is so small! Centering and standardizing our continuous predictor is the solution. Re-format your data for JAGS given this transformation, then re-run your model. What does the model show now?
+```{r}
+MCMCvis::MCMCsummary(cats.fit)
+```
+  
+6. Check the PPO and traceplot for your model.
+    ```{r}
+
+    ```
+  
+7. Finally, conduct a posterior predictive check, using the average abundnace as $T(y)$, and calculate the appropriate Bayesian p-value. 
+    ```{r}
+
+    ```
+    
+8. Our posterior predictive check does not suggest that our model is appropriate for our data! What do you think is wrong with our model, and how would you fix it?
+    ```{r}
+    
+    ```
+  
