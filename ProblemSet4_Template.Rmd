@@ -1,0 +1,395 @@
+---
+title: "Bayesian Modeling Problem Set 4 & 5"
+author: "EEB 187/297"
+date: "Due: 2025-11-06 by 11:30 am over BruinLearn"
+output: html_document
+---
+
+```{r setup, include=FALSE, results = 'hide', message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(R2jags)
+library(knitr)
+library(MCMCvis)
+library(ggplot2)
+```
+
+# How to Overfit a Linear Regression 
+_For all problem sets, we will provide you with a single R Markdown file. Please complete the problem set within a local copy of this file. To turn in, please upload a fully knitted html version. Make sure to keep `echo=TRUE`, as appropriate, to show your coding._ 
+
+A fundamental truth in multivariate regression is that when the number of predictor variables equals the number of independent samples, our model will predict the data perfectly. This is always the case, even when the predictors are completely random and uncorrelated with the response. While most of us would not casually build models with equal numbers of predictors as samples, even in situations where $n_{predictors} < n_{samples}$, the model can still be overfit, leading to substantial problems. For this reason, a general rule of thumb is that we need at least 10 data points for every covariate (an easy rule to follow, but it gets murky once pseudoreplication begins eroding the independence of data points). This problem set explores the way that models can become overfit and how even random noise can produce "signal" in these models. While this is an important lesson, it also allows us to practice our Bayesian model building, our prior posterior overlap (PPO) checks, and our posterior predictive distribution (PPD) checks.
+
+## A. March of the Penguins
+<img src="https://dl.dropboxusercontent.com/scl/fi/w3bmdyli8ddwm0pmq3c1h/penguin_party.jpeg?rlkey=w9q0xa6oe9j9f9iafwk3wnns2&" width="500"/>
+
+To begin, we need a dataset. Since we are going to show this as a generalizable phenomenon, we will simulate our data. First, we need a response variable, $y_i$. To keep this grounded in ecology, let's return to Problem Set 3 and imagine our variable as the number of penguins counted in different colonies via drone photography. We wills simulate our response variable as below:
+```{r, echo = T}
+set.seed(2025) #this ensures we all draw the same 'random' data
+penguin <- rnbinom(n = 30, mu = 500, size = 5)
+hist(penguin, main = "", xlab = "count")
+```
+
+1. Now we have a response variable, but we need a totally random predictor. Create a single vector of length equal to `penguin` of random draws from $N(0,1)$ and store this vector as `predict`. Using `lm()` run a simple linear regression of `penguin ~ predict` and examine the results using `summary()`. What is the effect of `predict` and is it significant? Are these results as you would expect?
+```{r}
+predict=rnorm(length(penguin),0,1)
+result=lm(penguin~predict)
+summary(result)
+
+#The effect of predict is -77.28 suggesting that when when predict increase by 1, the number of penguins counted will decrease by -77.28. However, the p-value for the predict is 0.134 which is greater than 0.05, thus it is insignificant at the significance level of 0.05. This is what we would expect as predict is totally random, thus do not actually carry and ecological/biological information, thus the cannot actually predict the penguin counts
+```
+  
+2. Now we will build our regression from question 1 as a Bayesian model in JAGS. Please refer to the code for Lecture 03-1, as well as lab for Week 4. (a) Create a `list()` of all data to give to JAGS. (b) Write the JAGS model as a `function() {}` stored as an object `penguin.mod1`. Use vague priors of $N(\mu=0,\tau=0.001)$ and $Gamma(shape=0.001, rate=0.001)$ where appropriate. Name your intercept `b0` and your slope `b1`. (c) Run your model in JAGS using the function `jags()`. Run 3 MCMC chains, with 5000 iterations per chain, 1000 burn-in, and a thinning rate of 10. 
+```{r}
+set.seed(1234)
+predict=rnorm(length(penguin),0,1)
+
+jags.data <- list(
+  penguin_count=penguin,
+  predictor=predict,
+  n.obs=length(penguin)
+  )
+
+penguin.mod1 <- function() {
+  
+  ## Priors
+  size_disp ~ dgamma(0.001, 0.001)
+  b0 ~ dnorm(0, 0.001)
+  b1 ~ dnorm(0, 0.001)
+  
+  ## Process model
+  for(i in 1:n.obs) {
+    mu[i]=exp(b0+b1*predictor[i])
+    p[i]=size_disp/(size_disp+mu[i])
+    penguin_count[i] ~ dnegbin(p[i], size_disp)
+  }  
+} 
+
+penguin.fit1<- jags(data=jags.data, 
+                    parameters.to.save=c("b0","b1","size_disp"),
+                    model.file=penguin.mod1,
+                    n.chains=3,
+                    n.iter=5000,
+                    n.burnin=1000,
+                    n.thin=10)
+```
+  
+3. In class this week you've learned about priors. Using the function `MCMCtrace(..., pdf=FALSE, priors = ...)` with syntax to put in your prior from A.2, plot your prior-posterior overlap for parameters b0 and b1. What can we learn from these plots? How much overlap is there between priors and posteriors? Additionally, given that we are using vague priors, do the priors actually look vague within the estimated region of each posterior?
+```{r, warning=FALSE}
+PR=rnorm(15000,mean=0,sd=sqrt(1/0.001))
+MCMCtrace(penguin.fit1,params="b0",priors=PR,pdf=FALSE)
+MCMCtrace(penguin.fit1,params="b1",priors=PR,pdf=FALSE)
+
+#We can learn from this plot that the data actually improve our understanding of the distribution of b0 and b1 significantly. The overlap between priors and posteriors for b0 and b1 is 1.1% and 1.2%, respectively. Given that we are using vague priors and according to the PPO plot, the priors appear to be flat across the estimated region of both posteriors; thus, I would conclude that the priors actually look vague.
+```
+    
+4. We can also assess how good our model fit is by conducting a Posterior Predictive Distribution check. As learned in Lecture 04-2, you can re-write your JAGS model, duplicating the data prediction line (e.g., `penguin[i]~...`) and changing the observed data `penguin` to a predictive note, e.g., `penguin.pred`. This allows you to now monitor the predicted penguin predictions, giving you posterior predictive distributions for each of your 30 data points. Once you have fit a new JAGS model to monitoring the PPD, you can use `MCMCchains()` to extract these values (a matrix of 1200 rows by 30 columns), and store them as an object `ppd`. 
+```{r, results='hide', message=FALSE, warning=FALSE}
+set.seed(1234)
+penguin.mod_pred <- function() {
+  
+  ## Priors
+  size_disp ~ dgamma(0.001, 0.001)
+  b0 ~ dnorm(0, 0.001)
+  b1 ~ dnorm(0, 0.001)
+  
+  ## Process model
+  for(i in 1:n.obs) {
+    mu[i]=exp(b0+b1*predictor[i])
+    p[i]=size_disp/(size_disp+mu[i])
+    penguin_count[i] ~ dnegbin(p[i], size_disp)
+    penguin.predict[i] ~ dnegbin(p[i], size_disp)
+  }  
+}
+penguin.fit_pred<- jags(data=jags.data, 
+                    parameters.to.save=c("b0","b1","size_disp","penguin.predict"),
+                    model.file=penguin.mod_pred,
+                    n.chains=3,
+                    n.iter=5000,
+                    n.burnin=1000,
+                    n.thin=10)
+ppd=MCMCchains(penguin.fit_pred,params="penguin.predict")
+```
+     
+5. As you learned in Lecture 04-2, we often evaluate model fit by comparing an observed test statistic to the PPD of the same test statistic. Here, we will keep it simple and just use a single test statistic, which is the mean penguin colony count, $mean(y_i)$. Using `ppd`, calculate the posterior predictive distribution of our test statistic and plot this distribution. Add a vertical red red line for the observed test statistic. Finally, calculate the Bayesian p-value for this test statistic. Is our model a good fit to the data?
+```{r}
+sim_mean=apply(ppd, 1, mean)
+obs_mean=mean(penguin)
+
+hist(sim_mean,breaks=20,main="Bayesian p-value",xlab="Simulated Means",ylab="Frequency")
+abline(v =mean(obs_mean),col ="red",lwd=2,lty=2)
+legend("topright",legend ="Observed Mean",col="red",lty=2,lwd=2) 
+
+p_value=mean(sim_mean>obs_mean)
+p_value
+
+#According to the result, the p_value is 0.547, which is very close to 0.5, thus suggest that our model is a good fit to the data.
+```
+     
+6. Hopefully you've learned from questions A.3 and A.5 that this model is not fitting great. The reason, quite briefly, is that our initial priors for our parameters (particularly b0) were actually informative and not 'truly' vague. To test to see if these problems can be fixed, repeat steps 2-5 but for a new model (`penguin.mod2`) which uses $N(\mu=0,\tau=0.000001)$ as its prior for b0 and b1. As before, plot and interpret your PPO, and calculate, plot and interpret your PPD for the same test statistic. 
+```{r, warning=FALSE, message = FALSE}
+ set.seed(1234)
+penguin.mod2 <- function() {
+  
+  ## Priors
+  size_disp ~ dgamma(0.001, 0.001)
+  b0 ~ dnorm(0, 0.000001)
+  b1 ~ dnorm(0, 0.000001)
+  
+  ## Process model
+  for(i in 1:n.obs) {
+    mu[i]=exp(b0 + b1*predictor[i])
+    p[i]=size_disp/(size_disp+mu[i])
+    penguin_count[i] ~ dnegbin(p[i], size_disp)
+    penguin.predict[i] ~ dnegbin(p[i], size_disp)
+  }  
+}
+penguin.fit2<- jags(data=jags.data, 
+                    parameters.to.save=c("b0","b1","size_disp","penguin.predict"),
+                    model.file=penguin.mod2,
+                    n.chains=3,
+                    n.iter=5000,
+                    n.burnin=1000,
+                    n.thin=10)
+
+PR=rnorm(15000,mean=0,sd=sqrt(1/0.000001))
+MCMCtrace(penguin.fit2,params="b0",priors=PR,pdf=FALSE)
+MCMCtrace(penguin.fit2,params="b1",priors=PR,pdf=FALSE)
+
+ppd_2=MCMCchains(penguin.fit2,params="penguin.predict")
+sim_mean_2=apply(ppd_2, 1, mean)
+obs_mean_2=mean(penguin)
+hist(sim_mean_2,breaks=20,main="Bayesian p-value",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_2),col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed Mean",col="red",lty=2,lwd=2) 
+p_value_2=mean(sim_mean_2>obs_mean_2)
+p_value_2
+
+#We can learn from this plot that the data actually improve our understanding of the distribution of b0 and b1. The overlap between priors and posteriors for b0 and b1 are both 0.4%. Given that we are using vague priors and according to the PPO plot, the priors appear to be flat across the estimated region of both posteriors; thus, I would conclude that the priors actually look vague. Furthermore, the prior is more vague compare to the previous used ones as the overlapping ratio decreased significantly
+
+#According to the result, the p_value is 0.542, which is very close to 0.5, thus suggest that our model is a good fit to the data.
+```
+        
+7. In addition to a Bayesian p-value calculated on a (or a few) test statistic(s), as above, we can also see how well our model is predicting every single data point. Using the PPD from A.6, calculate and store the mean and 95% credible interval predictions for each penguin colony (i.e., you should have 3 stored vectors, each of length 30). Create a `plot()` with our observed penguin counts on the x-axis and predicted penguin counts on teh y-axis. Predicted penguin counts should have a circle at the posterior mean, and an error bar as a vertical line through the point. Set the x-axis and y-axis on the same scale (e.g., 0 to 1200) and use `abline()` to draw a red diagonal 1:1 line. (If you're having trouble visualizing this, see Slide 34 in Lecture 04-2). If our model is doing a good job at predicting the data, then our posterior means will lie on the 1:1 line with tight (precise) uncertainty bars. In this case, since our predictor is a totally random variable, we should expect our prediction to be bad! After making your plot, describe just how bad it is.
+```{r}
+ppd_mean_colony=apply(ppd_2, 2, mean) 
+ppd_mean_colony_lower_95=apply(ppd_2,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_2,2,quantile,probs=0.975) 
+
+df=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper),width=0.1,color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,1200),ylim=c(0,1200)) +
+  labs(x="Observed penguin count",y="Predicted penguin count",title="Posterior Prediction VS Observed Value") 
+
+
+ggplot(df,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper), width=0.1, color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,2500),ylim=c(0,2500)) +
+  labs(x="Observed penguin count",y="Predicted penguin count",title="Posterior Prediction VS Observed Value") 
+#As a side note, the question asked for an x and y range of 1200; however, that failed to represent the full error range, thus I changed it to 2500.
+
+#The plot looks pretty bad, although the mean values are roughly equally distributed above/below the 1:1 line, which accounted for the observed Bayesian p-value of roughly 0.5 in both models. They fail to follow the 1:1 line; instead, there is a constant overestimation for the count in early colonies, whereas there is a constant underestimation of the count in later colonies. Furthermore, the confidence interval is very large compared to the counts themselves, suggesting that the model fails to provide a precise and accurate prediction of the penguin counts in each colony, and the count is still largely random. Thus suggesting that the proposed predictor (the random normally distributed one), is a very bad predictor for our model in this case.
+                  
+              
+```
+       
+
+## B. Posterior Predictive Penguins
+Now that we've worked hard just to replicate the simple step of running a basic univariate linear regression in a Bayesian setting and conducting appropriate levels of model fitting (which have mostly told us, as we expect, that our random predictor does a very poor job at explaining the data, but that our model is now correctly specified and passes a simple posterior predictive check), we can continue with overfitting our regression! 
+
+1. To overfit our regression, we are going to start by producing not just 1 random predictor variable, but 30 random variables. You can do this all at once by producing a 30 x 30 matrix full of random normal values with a mean of 0 and sd of 1. Store this matrix as the object `predicts'.
+```{r}
+set.seed(1234)
+predicts=matrix(rnorm(30*30,mean=0,sd=1),30,30)
+```
+
+2. So now we need to run 30 Bayesian models, each with increasing number of predictors. In Part A, we ran the first model, using 1 predictor. A second model would use 2 (random) predictors, a third model should use 3, etc., until our 30th model uses all 30 predictors! We are going to store the JAGS model output for each consecutive model into a `list()` which is a very useful structure in R to hold complex objects (such as fit models). Create an empty list called `penguin.mods`. You can fill the first element of your list with your previous model object with 1 random predictor.
+```{r}
+penguin.mods=list()
+penguin.mods[[1]]=penguin.fit_pred
+```
+    
+3. Rather than clutter our script copying and pasting the same code over and over, we're going to use a function called `penguin.predict()` (Morgan has written for you!) that: (1) creates jags data, (2) defines the jags model, and (3) fits the model. All you need to provide it is your observed response (`penguin`), your matrix of random predictors (`predicts`), and the number of predictors you wish to use (`n.preds = `, from 2 to 30). The code below will load in the function into your R workspace. Test out the function for `n.preds=2`, saving the object into the second element of your storage list `penguin.mods`.
+```{r, warning=FALSE, message = FALSE}
+source("https://dl.dropboxusercontent.com/scl/fi/0koun9pztocb4uh3vi9zm/function_PenguinPredict.R?rlkey=ap5crocc4ctyatearl4kvbqeh&")
+penguin.mods[[2]]=penguin.predict(2,predicts,penguin)
+```
+
+4. The function `penguin.predict()` should work, but the JAGS model code will be a bit different from your part A. In order to easily accomodate up to 30 predictors, each model will save the slopes into a vector of betas called `b.preds`. When `n.preds=2`, then `b.preds` will have 2 columns; when `n.preds=20`, then `b.preds` will have 20 columns, etc. Use `MCMCsummary()` to explore the parameters `b0` and `b.preds` from the model you stored in B.3. 
+```{r}
+summary=MCMCsummary(penguin.mods[[2]],params=c("b0","b.preds"))
+print(summary)
+b.pred_2=MCMCchains(penguin.mods[[2]],params="b.preds")
+ncol(b.pred_2)
+#Indeed it contains 2 columns
+```
+
+5. Has the addition of a single random predictor (for a total of 2) helped our model predictions at all? Recreate your plot from A.7 but use the PPD (`penguin.pred`) from your model with 2 predictors. Add a title to your plot, "n.preds = 2".
+```{r}
+ppd_mods=MCMCchains(penguin.mods[[2]],params="penguin.pred")
+sim_mean_mods=apply(ppd_mods, 1, mean)
+obs_mean_mods=mean(penguin)
+
+hist(sim_mean_mods,breaks=20,main="n.pred=2",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_mods),col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col="red",lty=2,lwd=2)
+
+p_value_mods=mean(sim_mean_mods>obs_mean_mods)
+p_value_mods
+
+ppd_mean_colony=apply(ppd_mods,2,mean) 
+ppd_mean_colony_lower_95=apply(ppd_mods,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_mods,2,quantile,probs=0.975) 
+
+df_2=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df_2,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper),width=0.1,color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
+  labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=2")
+
+#It helped as the Bayesian p-value is now 0.496, which is closer to 0.5 compared to the previous 0.547 when only 1 predictor was used. Acoording to the dot plot, the predictions are alos closer to the 1:1 line which also suggested a better fit.
+```
+
+6. A second random predictor should move the means, but the prediction should still be horrible. Time to run the rest of the models! Create a simple for-loop from `3:30`, where for each `i` you run the model with `i` predictors and store output into the `i`'th element of your list. (Keep the header to suppress model processing in your knit file.)
+```{r, echo = TRUE, results = 'hide', warning=FALSE, message = FALSE}
+for (i in 3:30){
+  penguin.mods[[i]]=penguin.predict(i,predicts,penguin)
+}
+
+```
+    
+7. You should now have a full `penguin.mods` list with 30 JAGS objects, each predicting penguin counts with increasing numbers of totally random predictors. Now is the time to see if random variables can perfectly predict data if you use enough! Instead of plotting all 30 PPD plots, just choose 5 more to display. Your code (above) should already have plots for 1 predictor (A.7) and for 2 predictors (B.5). Pick an additional 5 plots with varying numbers of predictors. One _must_ be the maximal model with 30 predictors. Make sure each plot is clearly labeled with the number of predictors used.
+```{r, echo = TRUE}
+#5 variables
+ppd_mods_5=MCMCchains(penguin.mods[[5]],params="penguin.pred")
+sim_mean_mods_5=apply(ppd_mods_5, 1, mean)
+obs_mean_mods_5=mean(penguin)
+
+hist(sim_mean_mods_5,breaks=20,main="n.pred=5",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_mods_5),col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col="red",lty=2,lwd=2)
+
+ppd_mean_colony=apply(ppd_mods_5,2,mean) 
+ppd_mean_colony_lower_95=apply(ppd_mods_5,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_mods_5,2,quantile,probs=0.975) 
+
+df_5=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df_5,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper), width=0.1, color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0, 1200),ylim=c(0, 1200))+
+  labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=5")
+
+
+
+#10 variables
+ppd_mods_10=MCMCchains(penguin.mods[[10]],params="penguin.pred")
+sim_mean_mods_10=apply(ppd_mods_10, 1, mean)
+obs_mean_mods_10=mean(penguin)
+
+hist(sim_mean_mods_10,breaks=20,main="n.pred=10",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_mods_10),col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col ="red",lty=2,lwd=2)
+
+ppd_mean_colony=apply(ppd_mods_10,2,mean) 
+ppd_mean_colony_lower_95=apply(ppd_mods_10,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_mods_10,2,quantile,probs=0.975)
+
+df_10=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df_10,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper),width=0.1,color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
+  labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=10")
+
+
+#15 variables
+ppd_mods_15=MCMCchains(penguin.mods[[15]],params="penguin.pred")
+sim_mean_mods_15=apply(ppd_mods_15, 1, mean)
+obs_mean_mods_15=mean(penguin)
+
+hist(sim_mean_mods_15,breaks=20,main="n.pred=5",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_mods_15),col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col ="red",lty=2,lwd=2)
+
+ppd_mean_colony=apply(ppd_mods_15,2,mean) 
+ppd_mean_colony_lower_95=apply(ppd_mods_15,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_mods_15,2,quantile,probs=0.975)
+
+df_15=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df_15,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper), width=0.1,color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
+  labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=15")
+
+
+#20 variables
+ppd_mods_20=MCMCchains(penguin.mods[[20]],params="penguin.pred")
+sim_mean_mods_20=apply(ppd_mods_20, 1, mean)
+obs_mean_mods_20=mean(penguin)
+
+hist(sim_mean_mods_20,breaks=20,main="n.pred=20",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_mods_20),col="red",lwd=2,lty=2)
+legend("topright",legend="Observed mean",col="red",lty=2,lwd=2)
+
+ppd_mean_colony=apply(ppd_mods_20,2,mean) 
+ppd_mean_colony_lower_95=apply(ppd_mods_20,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_mods_20,2,quantile,probs=0.975)
+
+df_20=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df_20,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper),width=0.1,color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
+  labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=20")
+
+#30 variables
+ppd_mods_30=MCMCchains(penguin.mods[[30]],params="penguin.pred")
+sim_mean_mods_30=apply(ppd_mods_30, 1, mean)
+obs_mean_mods_30=mean(penguin)
+
+hist(sim_mean_mods_30,breaks=20,main="n.pred=30",xlab="Simulated Means",ylab="Frequency")
+abline(v=mean(obs_mean_mods_30),col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col="red",lty=2,lwd=2)
+
+ppd_mean_colony=apply(ppd_mods_30,2,mean) 
+ppd_mean_colony_lower_95=apply(ppd_mods_30,2,quantile,probs=0.025) 
+ppd_mean_colony_upper_95=apply(ppd_mods_30,2,quantile,probs=0.975)
+
+df_30=data.frame(obs=penguin,sim_mean=ppd_mean_colony,lower=ppd_mean_colony_lower_95,upper=ppd_mean_colony_upper_95)
+
+ggplot(df_30,aes(x=obs,y=sim_mean))+
+  geom_point(col="blue",size=2)+
+  geom_errorbar(aes(ymin=lower,ymax=upper),width=0.1, color="black")+
+  geom_abline(intercept=0,slope=1,linetype="dashed",color="red")+
+  coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
+  labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=30")
+
+```
+    
+8. Looking at your PPD plot for 30 predictors, is it indicating a "good" model? What is "good" or what is "bad" about it? You should notice that your dots (means) are close to but not on the 1:1 line; if it is a perfectly overfit model, why are the predictions not exact?
+
+```{r, echo = TRUE}
+#All the dots are very close on the 1:1 line, suggesting that the model can generate data patterns that are very similar to the observed value. This could be a good thing, as the model is really good at predicting the data set; however, this could be a bad thing as well, suggesting a pattern of overfitting. Another bad thing observed in the model is that the confidence interval for each prediction is still large, suggesting that there is still huge uncertainty within the posterior distribution. Thus, although the model did a good job in predicting the mean, this is solely due to the addition of the predictors, which does not necessarily increase predictive accuracy but only creates an illusion of fit and actually increases uncertainty. The predictions are not exact because there still is uncertainty within the posterior distribution, as demonstrated in the histogram for n.preds=30, where not all the posterior simulated values are concentrated at the value of the observed mean; instead, there are still values scattered around due to the innate uncertainty in the Bayesian inference process. 
+```
+
+9. So we have fit a dataset with an increasing number of random predictor variables. With every additional variable, our model gets a little better at predicting our data. What simple lesson about multivariate analyses does this exercise illustrate? In other words, what is the point of this entire problem set?
+```{r, echo = TRUE}
+#This exercise illustrates the fact that covariates should not be added in attempts to increase model fitting, because it creates an illusion of better fit without actually increasing the precision and accuracy of the model, hence overfitting. This is hard to see with frequentist analysis, as they treat all the parameters and inferences as fixed values; thus, the result of adding variables will only be reflected as a better fitted p-value if the analysis is not thorough (thus we see other tests that include degrees of freedom as a parameter in the test statistics). However, in Bayesian stats, the results of adding new variables are more obvious, as it only improves the accuracy of the mean but not the posterior distribution, thus suggesting that the "better fitted model" was only an illusion created due to higher complexity of the model. To conclude, I think a better approach in model building, as suggested by the exercise itself, is a rule of thumb that one needs at least 10 data points for every covariate. However, since this could be jeopardized by the issue of pseudoreplication, I would suggest that one only tries to add variables if it makes biological sense or is relevant to the study itself.
+```

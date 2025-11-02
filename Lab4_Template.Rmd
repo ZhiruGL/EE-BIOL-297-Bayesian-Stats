@@ -1,0 +1,173 @@
+---
+title: "Bayesian Modeling Lab 04"
+author: "EEB 187/297"
+date: "2025-10-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+# Lab 4. Building comfort using JAGS for Bayesian models
+_For all labs, we will provide you with a single R Markdown file (like this file). It is suggested that you add R code directly within a local copy of this markdown file so that you can produce a single document that records your progress, your code, and your output._
+
+By this point you should have followed along in lecture to learn how to do a simple model in JAGS that is a Gaussian linear regression of a single response as a function of a single covariate. This lab will take you onward from there. Make sure to stop and ask questions if you have them!
+
+## A. Changing the model
+We are going to start by returning to the dataset introduced in lecture: the richness of bird species in each of 50 U.S. states along with a variety of potential covariates. The code below will load in this data:
+```{r, echo = F, message = F}
+    library(kableExtra)
+    library(knitr)
+    library(MCMCvis)
+    library(R2jags)
+birds <- read.csv("https://dl.dropboxusercontent.com/scl/fi/sv3h6d0kkza8tgvqtvmc7/birds.csv?rlkey=8zb2g11ox4ypu7ncesrmj32s7&st=bfe74r29&")
+kable(head(birds), "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+
+
+```
+Data in this table include: (a) rank of each state by richness; (b) U.S. state; (c) state abbreviation; (d) number of species [response variable]; (e) area of each state (km^2); (f) average annual temperature °F; and (g) average annual precipitation in inches. 
+
+
+1. To begin, let's recreate the simple Bayesian model of `temp~spp` that we fit during lecture. Your code should include three steps: (1) define the data object; (2) define the model as a function; and (3) run the model. Refer to the code on BruinLearn for Lecture 03-1. 
+    ```{r}
+
+    ```
+
+2. Create a scatterplot of bird richness versus temperature and add a single line for the posterior mean of the regression. 
+    ```{r}
+    
+    ```
+  
+3. Now, let’s consider modifying our model to do multiple linear regression. Instead of only exploring temperature, let’s look at three variables simultaneously: temperature, precipitation, and area. Start by modifying your JAGS code to include the additional variables. You’ll have to modify both your process model and your priors.
+    ```{r}
+    
+    ```
+  
+4. Modify your data object (i.e., the list of variables to be sent to JAGS from R) to include the additional variables.
+    ```{r}
+       
+    
+    ```
+  
+5. Modify your `parameters.to.save`, your `model.file`, then run your new model as jags.model2.
+    ```{r, message = F}
+   
+
+    ```
+  
+6. Recreate your plot from A2 but a second mean temperature line for your multivariate model. How has the regression changed?
+    ```{r}
+    
+    ```
+  
+7. How well is the model fitting all the parameters? Why might it not be fitting area very well?
+    ```{r}
+    
+
+    ```
+  
+8. Create a new input data file (i.e., `jags.data`) but scale all your independent variables (not your response) either manually (i.e., $\frac{x_i-\bar{x}}{\sigma}$) or use the function `scale()`.
+    ```{r}
+    
+    
+    ```
+   
+9. Run `jags.model3` using the scaled input data. Examine it. How has it changed? Now that all three independent variables have been equally scaled, you can compare their coefficients. What is the effect of temperature relative to precipitation?
+    ```{r}
+   
+    ```
+   
+10. Take the modeled coefficients from your model in A.9 and back-transform them in order to plot the final modeled relationship of richness to temperature. Use the following formulas: $b0_{unscaled}=b0_{scaled} - \frac{\bar{x}_{temp} \cdot b1_{scaled}}{\sigma_{temp}}$ and $b1_{unscaled}=\frac{b1_{scaled}}{\sigma_{temp}}$.
+
+    ```{r}
+    
+    ```
+   
+## B. Exploring posteriors
+rJAGS objects contain lots of information about your posterior that can help you assess model fit, model convergence, and your parameter posteriors. This section explores these options.
+
+1. Try using `plot()` on your model object (e.g., `jags.model3`). What does it produce?
+    ```{r}
+   
+    ```
+   
+2. Examine the structure (`str()`) of `jags.model3`. What does it contain?
+    ```{r}
+   
+    ```
+   
+3. As you've seen in class, a traceplot is a plot of the values of each chain plotted versus the iteration of the MCMC chain. Traceplots show how the MCMC chain moves around the posterior. A good traceplot looks like a “hairy caterpillar” or a “bushy mustache.” You can examine the traceplots of your parameters using `traceplot(jags.model3)` or `MCMCvis::MCMCtrace( , pdf=FALSE)`. Each chain will be represented by a different color. How is your convergence? Does it look like the MCMC is fairly exploring the
+posterior?
+    ```{r}
+   
+    ```
+   
+4. Your actual posterior chains (all 3 of them) are stored under `jags.model3$BUGSoutput$sims.list`, but you can use `MCMCvis::MCMCchains()` for faster access. What is the length of the posterior sample for the parameter 'b1'? What determines this length? Use the posterior to manually create your own traceplot using `plot()` and `lines()`, including a different color for each chain.
+    ```{r}
+   
+    ```
+   
+5. These individual chains can be summarized as histograms, which themselves are used to describe the posterior. Plot the first chain for `b1` as a histogram with density on the y-axis.
+    ```{r}
+    
+    ```
+   
+6. It is often useful to view the posteriors of all three chains on top of each other, to see how well the multiple MCMC chains have converged on each other. Instead of using `hist()` you can use `density()` to calculate a continuous probability surface from a histogram of your values. Do this now and plot it for the first chain, e.g.: `plot(density(...))`. Using `lines()`, plot the densities of your other two chains for parameter `b1` on the same plot but in different colors. Did the three chains converge well?
+    ```{r}
+   
+    ```
+   
+7. Bayesian credible intervals are very easily calculated for parameters from the posterior. The basic output for R2jags objects can give you 95% credible intervals. However, it is useful to know how to extract credible intervals yourself from chains. Use `quantile()` on all posterior values (from all 3 chains) for parameter `b1` to get the 90% BCI. Repeat this to get the 90% BCI for b2 and b3.
+    ```{r}
+   
+    ```
+   
+8. Draws from the posterior via MCMC are proportional to the probability density of the posterior. Consequently, the frequency with which certain values show up in our posterior sample (assuming we have a large enough sample of the posterior) are equivalent to their probability density. Knowing this, for `model3`, what is the probability that the true value for `b1` is less than 0? What is the probability that the true value of `b2` is greater than 0? What is the probability that the true value of `b3` is less than 0?
+    ```{r}
+    
+    ```
+   
+## C. Modifying MCMC settings
+There are a lot of inputs to JAGS. Now it’s time to explore them and what they do.
+
+1. Let’s start by back-tracking to a simpler model, `jags.model1` which only looked at the relationship of richness to temperature. Re-run this original model from A.1 but store it as `jags.test`. The results should be identical to `jags.mdodel1`. (If you don't also redefine `jags.data`, JAGS may give an error that you have unused data like `precip` and `area`. These errors are annoying but don't harm anything.)
+    ```{r}
+    
+    ```
+   
+2. First, we have options on the number of chains to run. Try running the model with only 1 chain. Look at the structure. Do a traceplot. Then run the model with 5 chains. Again, look at the structure and do a traceplot. In ’real life’, it is often faster to run a model with 1 chain while we are trouble-shooting, but once we want to make inference on the model, we run with 3 (or more) chains in order to assess convergence.
+    ```{r}
+   
+
+    ```
+   
+3. You’ll notice that when you have more than 1 chain, the summary for your model includes a column called `Rhat`. We’ll learn about this more in lecture, but Rhat is the 'Gelman-Rubin diagnostic', which is a metric of convergence in posteriors across multiple chains. When Rhat < 1.1, it is generally safe to assume that the chains have converged. Take a minute just to go back at your model objects and look at the Rhat values. Why don't both your models from C.2 include the Rhat statistic?
+    ```{r}
+   
+    ```
+   
+4. MCMC often takes a while to ’find’ the posterior. Thus, the beginning of MCMC runs often wander around a little bit before they settle into the posterior. Since we don’t like this wandering (the values are not fairly proportional to the true posterior), we  discard this early phase, which we call the 'burn-in.' Consequently, your burn-in of 1000 currently discards the first 1000 of your 5000 MCMC iterations. For education’s sake, however, we now want to try to view what happens at the start of a chain. To do this, set your model to have 2 chains with 1 burn-in and 100 iterations and 1 thin (i.e,. no thinning). View the results with a traceplot. Can you see the wandering at the start of the MCMC chain? Because this is a simple model with conjugate priors, the MCMC is using Gibbs sampling so the posterior is found almost immediately. In some models, your model may take 10,000 or more iterations to 'burn in' before it finds the posterior.
+    ```{r}
+    
+    
+    ```
+   
+5. To demonstrate what 'wandering' looks like, let's re-run the same model but without conjugate priors. Redefine your model from A.1 but instead define `b0` and `b1` as $Uniform(-100,100)$ and `tau` as $Uniform(1E{-8},10)$. The traceplots now for 100 iterations should show strong posterior wandering.
+    ```{r}
+   
+    ```
+    
+6. Your traceplot from the previous step will have shown that the traces for your parameters (`b0`, `b1`, `tau`) are quite different. Often, MCMC will explore the posterior space for different parameters with differing degrees of efficiency. The efficiency with which MCMC chains explore the posterior space is called mixing. Run the model from C.5 again, but increase the number of iterations to 1000 (but keep other MCMC settings constant). How well are your chains mixing? 
+    ```{r}
+     
+    ```
+   
+7. Another issue to look at is whether your chains are 'bumping' against boundaries that are unexpected. In the traceplots from B.6 you'll notice that 'tau' is bounded by zero, which is appropriate. But notice that your traceplot for 'b0' is now hitting the upper boundary of our $U(-100,100)$ prior. This is a signal that our prior is maybe mispecified (it is!) and that we need to change our prior. How might you fix this problem?
+    ```{r}
+    
+    ```
+_Congrats! That was a long lab, but now you're well versed in running Bayesian models via MCMC._
