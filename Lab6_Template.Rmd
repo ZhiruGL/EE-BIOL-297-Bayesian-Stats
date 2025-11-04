@@ -1,0 +1,131 @@
+---
+title: "Bayesian Modeling Lab 06"
+author: "EEB 187/297"
+date: "2025-11-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+```
+
+# Lab 6. Generalized Linear Mixed Models (GLMMs) in JAGS
+_For all labs, we will provide you with a single R Markdown file (like this file). It is suggested that you add R code directly within a local copy of this markdown file so that you can produce a single document that records your progress, your code, and your output._
+
+This week, we return to the two datasets from Lab 5 (plants in shadehouses and caterpillars in fragments) and use these datasets to fit them, appropriately accounting for pseuodreplication, as Generalized Linear Mixed Models (GLMMs), meaning we will use a combination of fixed and random effects within a generalized linear framework.  
+
+## A. Plants grown in shadehouses
+As a reminder, this dataset shows the experimental growth of plants in shadehouses. Plants were placed in 5 shadehouses and assigned either a high light (L) or low light (D) treatments. Each shadehouse has 4 seedlings with each of three damage treatments (0, 0.1, 0.25), for a total of 12 seedlings per shadehouse. The dataset looks at the number of survivors and deaths for each combination of damage and shadehouse.
+```{r, echo = F, message = F}
+    library(kableExtra)
+    library(knitr)
+    library(lme4)
+    library(MCMCvis)
+    library(R2jags)
+plants <- read.csv("https://dl.dropboxusercontent.com/scl/fi/9a13w9ywvl56owhmgisg3/plantdamage_surv.csv?rlkey=pxdxewdl80ekacw4460rsi47m&")
+plants$shadehouse <- factor(rep(LETTERS[1:10], times = 3))
+kable(head(plants), "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+```
+Data in this table include: (a) treatment (Light vs Dark); (b) leaf damage score; (c) survivors (out of 4); (d) deaths (out of 4); and (e) one of 10 assigned shadehouses, labeled A through J. Note that Survivors + Deaths = 4 (such that the Deaths column is redundant).
+
+1. We will start the lab where we left off in Week 5, having built a well-fitting binomial GLM for survival with appropriate priors for the logit-scale parameters. Take this moment to look back over your DAG (Lab5:A.1) and your improved model (Lab5:A.8). Copy and paste over your model (and any associated code, like a data list) from Lab5:A.8, and run it now, as before, with 3 chains of 20,000 iterations, with 5,000 burn-in and a thin rate of 10. 
+    ```{r}
+   
+
+    ```
+    
+2. Pay attention now to what we ignored in Lab 5, which is that plants are located in one of 10 shadehouses, now identified in the data by `plants$shadehouse`. Note that this study design has two tiers of pseudoreplication, as defined in Lecture 05-1. Identify both sources of pseudoreplication below:
+
+    ```{r}
+    
+    ```
+
+3. We will focus on controlling for the major source of pseudoreplication, which is at the level of shadehouse. Since we do not believe that shadehouse should impact our fixed effects of interest (i.e., damage, which is crossed with shadehouse, or light, which is nested within shadehouse), we will only add a random intercept for shadehouse (i.e., not a random slope). Thus, we are assuming that any shadehouse effect will impact survial probability equally across seedlings within the shadehouse. Following Lecture 05-1, draw two equal and equivalent DAGs for our new GLMM. Note that the fixed effects should stay the same in each DAG, the equivalence is in how you choose to parameterize or code the random effect.^[at this point in the quarter, if you want to learn how to plot DAGS in R then you can use the 'ggdag' R package. First, build a DAG structure using `dagify()`, then plot using `ggdag()`, which uses the ggplot syntax.]
+    ```{r, message = F, echo = F}
+    library(ggdag)
+    library(tidyverse)
+    # If you want, use the ggdag package to plot DAGS!
+
+    ```
+  
+4. Write your GLMM model code in JAGS. For instructional purposes, use your version from A.3 that has a global intercept ($\beta_0$) and then a random offset ($b_{shade}$) for each shadehouse, derived from a hierarchical normal ($N(0,\tau_{shade})$). Pay attention to how you code the BLUPs; refer back to slides from Lecture 05-1 to see how to use the 'index trick' to select only one offset per shadehouse. Remember to add a new for-loop that loops through shadehouses and defines each BLUP. Finally, you will need a prior for our new hyperparameter, $tau_{shade}$. Since this is on the logit-scale, we will not use $\tau \sim Gamma(0.001, 0.001)$ but instead define $\tau = 1/\sigma^2$ and $\sigma \sim Uniform(0, 5)$, which is weakly informative but performs well. 
+    ```{r}
+    
+    ```
+  
+5. We will need to re-define our data list which will be passed to JAGS. We can re-use the original list from A.1, but will now need to add _two_ new variables. One will be an index for shadehouse (which can be stored as a factor), and the second will be the number of shadehouses. 
+    ```{r}
+   
+    ```
+  
+6. Now that we have our model code and data list ready, run your JAGS model. Note that with our GLMM, we will have more choices of which parameters to monitor! For random effects, we can choose to monitor both our hyper-parameters (e.g., the mean and variance of population-level distributions) and our individual BLUPs (e.g., the intercept offsets for each shadehouse). For now, let's monitor them all! Take a look at the output from your model. Make sure you understand what it is showing across all parameters. 
+    ```{r, warning=FALSE}
+    
+    ```
+  
+7. How much variation is there from shadehouse to shadehouse? How might we learn about it from our fitted model?
+    ```{r, warning=FALSE}
+
+    ```
+    
+8. Compare the output of our starting GLM model to our new GLMM model. How well do they compare?
+    ```{r, warning=FALSE}
+
+    ```
+   
+9. _BONUS:_ We can visualize the variation from the random intercept by plotting the predicted response for the fixed effect of damage (both light and dark treatments) across all shadehouses. It looks something like this:
+    
+<img src = "https://dl.dropboxusercontent.com/scl/fi/d1eexi2n4hknf6hbql64q/Shadehouse_plot.png?rlkey=p1p9n7g2qlnq5xnmlc2xpotcd&" width="500"/>
+    
+This isn't accounting for uncertainty (e.g., uncertainty ribbons) and it doesn't show the population-level effects, but it is useful in showing just how different the probability of survival is from shadehouse to shadehouse! This is mostly a plotting and coding challenge, not a statistical one, but if you have extra time, figuring out how to replicate this plot is worthwhile challenge.
+```{r}
+    
+```
+  
+## B. Caterpillars in forest fragments
+As a reminder, our second dataset is from 10 forest fragments of varying size. The purpose of the study was to determine if the abundances of specialist and generalist caterpillars responded differently to fragment size. Each row is a species found in a fragment (species names are not given in the dataset).
+```{r, echo = F, message = F}
+cats <- read.csv("https://dl.dropboxusercontent.com/scl/fi/d39pjirvzx4lmlz3ddw29/caterpillars.csv?rlkey=bv0xhs8y6r0ma0i3k6f5sh06s&")
+kable(head(cats), "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+```
+Data in this table include: (a) Forest name; (b) Fragment size (in hectares); (c) whether each species observed was a specialist or generalist; and (d) abundance of each observed species. 
+  
+1. We ended Lab 5 having run a Poisson model that fit poorly, concluding that the poor fit is likely due to overdispersion on the data. Let's pick up where we left off, but improve upon Lab 5's model, re-running it as a Negative Binomial GLM. But first, draw the DAG:
+    ```{r, echo = F}
+
+    ```
+  
+2. Now, define your data list^[Remember to center and scale `size`] and write your JAGS model. We haven't run a 'dnegbin()' model in JAGS previously, so please note (the JAGS User Manual is helpful here!) that JAGS only uses the $NB(p,r)$ parameterization, whereas ecologists prefer the $NB(\lambda,\kappa)$ paramaterization. To adapt, we can still write our linear model as a log-linear function of an average ($\lambda$), but then we need an extra deterministic transformation in our model: $p_i=r/(r + \lambda_i)$. $r$ is our new overdispersion parameter and can be defined with a $Gamma(0.01,0.01)$ weak prior. With your JAGS code written, run the model with the same MCMC configuration as part A. How does it look?
+    ```{r}
+   
+    ```
+  
+3. In Lab 5, we evaluated this model with a posterior predictive check (which failed horribly!). Repeat that now, using the average abundnace as $T(y)$, and calculate the appropriate Bayesian p-value. If you didn't create and monitor $y_{pred}$ in B.2, you'll have to re-run your model.
+    ```{r}
+
+    ```
+  
+4. Step B.4 should demonstrate that our new model fits _way_ better due to the accounting for overdispersion. But now we have to face the problem of pseudoreplication. We've been treating each caterpillar species as independent, even though many are sampled in the same fragments. We don't hypothesize that the fixed effects should change by fragment, so we only have to use a random intercept. But first, let's draw the DAG:
+    ```{r}
+
+    ```
+  
+5. Our data list will need `fragment` and `n.frags` to be added, and our JAGS code will need to add in the random intercept. Code both below, and run the model. Remember notes from B.2 and part A.^[You have have noticed by now that our models are running slower! As they become more complex and as we have more parameters, things will begin to slow.]
+    ```{r}
+
+    ```
+  
+6. For our primary parameters of inference, how different is the interpretation from the GLM versus GLMM?
+    ```{r}
+   
+    ```
+  
+7. Just to be sure, let's conduct a posterior predictive check for our model, as per step B.3, and make sure that our GLMM model continues to be an adequate fit for the data!  
+    ```{r}
+
+    ```
