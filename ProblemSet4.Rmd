@@ -254,7 +254,7 @@ ggplot(df_2,aes(x=obs,y=sim_mean))+
   coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
   labs(x="Observed penguin count",y="Smulated penguin count",title ="n.pred=2")
 
-#It helped as the Bayesian p-value is now 0.464, which is closer to 0.5 compared to the previous 0.547 when only 1 predictor was used. Acoording to the dot plot, the predictions are alos closer to the 1:1 line which also suggested a better fit.
+#It helped as the Bayesian p-value is now 0.489, which is closer to 0.5 compared to the previous 0.472 when only 1 predictor was used. According to the dot plot, the predictions are also closer to the 1:1 line which also suggested a better fit.
 ```
 
 6. A second random predictor should move the means, but the prediction should still be horrible. Time to run the rest of the models! Create a simple for-loop from `3:30`, where for each `i` you run the model with `i` predictors and store output into the `i`'th element of your list. (Keep the header to suppress model processing in your knit file.)
