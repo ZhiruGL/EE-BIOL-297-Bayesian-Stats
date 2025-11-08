@@ -34,7 +34,7 @@ predict=rnorm(length(penguin),0,1)
 result=lm(penguin~predict)
 summary(result)
 
-#The effect of predict is -77.28 suggesting that when when predict increase by 1, the number of penguins counted will decrease by -77.28. However, the p-value for the predict is 0.134 which is greater than 0.05, thus it is insignificant at the significance level of 0.05. This is what we would expect as predict is totally random, thus do not actually carry and ecological/biological information, thus the cannot actually predict the penguin counts
+#The effect of predict is 10.86 suggesting that when when predict increase by 1, the number of penguins counted will increase by 10.86. However, the p-value for the predict is 0.813 which is greater than 0.05, thus it is insignificant at the significance level of 0.05. This is what we would expect as predict is totally random, thus do not actually carry and ecological/biological information, thus the cannot actually predict the penguin counts
 ```
   
 2. Now we will build our regression from question 1 as a Bayesian model in JAGS. Please refer to the code for Lecture 03-1, as well as lab for Week 4. (a) Create a `list()` of all data to give to JAGS. (b) Write the JAGS model as a `function() {}` stored as an object `penguin.mod1`. Use vague priors of $N(\mu=0,\tau=0.001)$ and $Gamma(shape=0.001, rate=0.001)$ where appropriate. Name your intercept `b0` and your slope `b1`. (c) Run your model in JAGS using the function `jags()`. Run 3 MCMC chains, with 5000 iterations per chain, 1000 burn-in, and a thinning rate of 10. 
@@ -57,13 +57,22 @@ penguin.mod1 <- function() {
   
   ## Process model
   for(i in 1:n.obs) {
+<<<<<<< HEAD
     mu[i] <- b0 + b1*predictor[i]
+=======
+    mu[i]=b0+b1*predictor[i]
+    
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
     penguin_count[i] ~ dnorm(mu[i], tau)
   }  
 }
 
 penguin.fit1<- jags(data=jags.data, 
+<<<<<<< HEAD
                     parameters.to.save=c("b0","b1"),
+=======
+                    parameters.to.save=c("b0","b1","tau"),
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
                     model.file=penguin.mod1,
                     n.chains=3,
                     n.iter=5000,
@@ -77,7 +86,11 @@ PR=rnorm(15000,mean=0,sd=sqrt(1/0.001))
 MCMCtrace(penguin.fit1,params="b0",priors=PR,pdf=FALSE)
 MCMCtrace(penguin.fit1,params="b1",priors=PR,pdf=FALSE)
 
+<<<<<<< HEAD
 #We can learn from this plot that the data did not actually improve our understanding of the distribution of b0 and b1 very well. The overlap between priors and posteriors for b0 and b1 is 45.6% and 88.1%, respectively, hence the model actuall fits poorly. Given that we are using vague priors and according to the PPO plot, the priors appear to not to be flat across the estimated region of both posteriors; thus, I would conclude that the priors do not actually look vague.
+=======
+#We can learn from this plot that the data fail to improve our understanding of the distribution of b0 and b1 significantly. The overlap between priors and posteriors for b0 and b1 is 45.6% and 88.1%, respectively. Given that we are using vague priors and according to the PPO plot, the priors appear to not be flat across the estimated region of both posteriors; thus, I would conclude that the priors does not look vague.
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
 ```
     
 4. We can also assess how good our model fit is by conducting a Posterior Predictive Distribution check. As learned in Lecture 04-2, you can re-write your JAGS model, duplicating the data prediction line (e.g., `penguin[i]~...`) and changing the observed data `penguin` to a predictive note, e.g., `penguin.pred`. This allows you to now monitor the predicted penguin predictions, giving you posterior predictive distributions for each of your 30 data points. Once you have fit a new JAGS model to monitoring the PPD, you can use `MCMCchains()` to extract these values (a matrix of 1200 rows by 30 columns), and store them as an object `ppd`. 
@@ -92,13 +105,17 @@ penguin.mod_pred <- function() {
   
   ## Process model
   for(i in 1:n.obs) {
+<<<<<<< HEAD
     mu[i] <- b0 + b1*predictor[i]
+=======
+    mu[i]=b0+b1*predictor[i]
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
     penguin_count[i] ~ dnorm(mu[i], tau)
     penguin.predict[i] ~ dnorm(mu[i], tau)
   }  
 }
 penguin.fit_pred<- jags(data=jags.data, 
-                    parameters.to.save=c("b0","b1","size_disp","penguin.predict"),
+                    parameters.to.save=c("b0","b1","tau","penguin.predict"),
                     model.file=penguin.mod_pred,
                     n.chains=3,
                     n.iter=5000,
@@ -119,28 +136,47 @@ legend("topright",legend ="Observed Mean",col="red",lty=2,lwd=2)
 p_value=mean(sim_mean>obs_mean)
 p_value
 
+<<<<<<< HEAD
 #According to the result, the p_value is 0, which is very small and far away from 0.5, thus suggest that our model is poorly fit to the data, and the unlikely to reproduce the observed data.
+=======
+#According to the result, the p_value is 0, which is very far from 0.5, thus suggest that our model is a poor fit to the data.
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
 ```
      
 6. Hopefully you've learned from questions A.3 and A.5 that this model is not fitting great. The reason, quite briefly, is that our initial priors for our parameters (particularly b0) were actually informative and not 'truly' vague. To test to see if these problems can be fixed, repeat steps 2-5 but for a new model (`penguin.mod2`) which uses $N(\mu=0,\tau=0.000001)$ as its prior for b0 and b1. As before, plot and interpret your PPO, and calculate, plot and interpret your PPD for the same test statistic. 
 ```{r, warning=FALSE, message = FALSE}
+<<<<<<< HEAD
 set.seed(2025)
 penguin.mod2 <- function() {
   
   ## Priors
+=======
+ set.seed(2025)
+penguin.mod2 <- function() {
+  
+  #Priors
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
   tau ~ dgamma(0.001, 0.001)
   b0 ~ dnorm(0, 0.000001)
   b1 ~ dnorm(0, 0.000001)
   
   ## Process model
   for(i in 1:n.obs) {
+<<<<<<< HEAD
     mu[i] <- b0 + b1*predictor[i]
+=======
+    mu[i]=b0+b1*predictor[i]
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
     penguin_count[i] ~ dnorm(mu[i], tau)
     penguin.predict[i] ~ dnorm(mu[i], tau)
   }  
 }
 penguin.fit2<- jags(data=jags.data, 
+<<<<<<< HEAD
                     parameters.to.save=c("b0","b1","penguin.predict"),
+=======
+                    parameters.to.save=c("b0","b1","tau","penguin.predict"),
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
                     model.file=penguin.mod2,
                     n.chains=3,
                     n.iter=5000,
@@ -160,7 +196,11 @@ legend("topright",legend ="Observed Mean",col="red",lty=2,lwd=2)
 p_value_2=mean(sim_mean_2>obs_mean_2)
 p_value_2
 
+<<<<<<< HEAD
 #We can learn from this plot that the data actually improve our understanding of the distribution of b0 and b1. The overlap between priors and posteriors for b0 and b1 are both 10.5% and 10.9% respectively. Given that we are using vague priors and according to the PPO plot, the priors appear to be flat across the estimated region of both posteriors (much faltter compare to the previous model); thus, I would conclude that the priors actually look vague. Furthermore, the prior is more vague compare to the previous used ones as the overlapping ratio decreased significantly, thus the observed data is improving our understanding about the distribution of the paramemter
+=======
+#We can learn from this plot that the data actually improve our understanding of the distribution of b0 and b1. The overlap between priors and posteriors for b0 and b1 are both 10.5% and 10.9% respectively which is lower the the previous one. Given that we are using vague priors and according to the PPO plot, the priors appear to be flat across the estimated region of both posteriors; thus, I would conclude that the priors actually look vague. Furthermore, the prior is more vague compare to the previous used ones as the overlapping ratio decreased significantly.
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
 
 #According to the result, the p_value is 0.471, which is very close to 0.5, thus suggest that our model is a good fit to the data.
 ```
@@ -189,7 +229,15 @@ ggplot(df,aes(x=obs,y=sim_mean))+
   labs(x="Observed penguin count",y="Predicted penguin count",title="Posterior Prediction VS Observed Value") 
 #As a side note, the question asked for an x and y range of 1200; however, that failed to represent the full error range, thus I changed it to 2500.
 
+<<<<<<< HEAD
 #The plot looks pretty bad, although the mean values are roughly equally distributed above/below the 1:1 line, which accounted for the observed Bayesian p-value of roughly 0.5 in both models. They fail to follow the 1:1 line; instead, there is a constant overestimation for the count in early colonies, whereas there is a constant underestimation of the count in later colonies. Furthermore, the confidence interval is very large compared to the counts themselves, suggesting that the model fails to provide a precise and accurate prediction of the penguin counts in each colony, and the count is still largely random. Thus suggesting that the proposed predictor (the random normally distributed one), is a very bad predictor for our model in this case.
+=======
+#The plot looks pretty bad, although the mean values are roughly equally distributed above/below the 1:1 line, which accounted for the observed Bayesian p-value of roughly 0.5 in both models. They fail to follow the 1:1 line; instead, there is a constant overestimation for the count in early colonies, whereas there is a constant underestimation of the count in later colonies. Furthermore, the confidence interval is very large compared to the counts themselves, which provides a high coverage. However such large confidence interval is also suggesting that the model fails to provide a precise and accurate prediction of the penguin counts in each colony, and the count is still largely random. Thus suggesting that the proposed predictor (the random normally distributed one), is a very bad predictor for our model in this case.
+
+# Interestingly, the predicted value of the penguin counts oscillates around 500 and seems to have a difficult time getting away from it. This is unsurprising, as in the original dataset the population mean in the negative binomial distribution is set to 500. Thus, the model faithfully reflected that. However, the fact that the model cannot seem to deviate from that suggests that either the predictors are not powerful enough to actually simulate the variation within the population, or there are hidden variables that remain to be discovered. In this case, it is likely that both cases are involved. Since we are using a random predictor drawn from a normal distribution, it certainly does not contain any ecological/biological significance, thus has poor explanatory power. Furthermore, since we are only using one predictor without considering all the other possibilities of predictors, we are ignoring the ones that could actually explain the pattern, such as important ecological processes (however, our data are randomly generated, so this is only for the purpose of illustration). To conclude, the model is actually a very poor fit, representing the sampled value as well as the population.
+                  
+              
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
 ```
        
 
@@ -249,7 +297,7 @@ ggplot(df_2,aes(x=obs,y=sim_mean))+
   coord_cartesian(xlim=c(0,1200),ylim=c(0,1200))+
   labs(x="Observed penguin count",y="Simulated penguin count",title ="n.pred=2")
 
-#It helped as the Bayesian p-value is now 0.496, which is closer to 0.5 compared to the previous 0.547 when only 1 predictor was used. Acoording to the dot plot, the predictions are alos closer to the 1:1 line which also suggested a better fit.
+#It helped as the Bayesian p-value is now 0.464, which is closer to 0.5 compared to the previous 0.547 when only 1 predictor was used. Acoording to the dot plot, the predictions are alos closer to the 1:1 line which also suggested a better fit.
 ```
 
 6. A second random predictor should move the means, but the prediction should still be horrible. Time to run the rest of the models! Create a simple for-loop from `3:30`, where for each `i` you run the model with `i` predictors and store output into the `i`'th element of your list. (Keep the header to suppress model processing in your knit file.)
@@ -314,7 +362,7 @@ ppd_mods_15=MCMCchains(penguin.mods[[15]],params="penguin.pred")
 sim_mean_mods_15=apply(ppd_mods_15, 1, mean)
 obs_mean_mods_15=mean(penguin)
 
-hist(sim_mean_mods_15,breaks=20,main="n.pred=5",xlab="Simulated Means",ylab="Frequency")
+hist(sim_mean_mods_15,breaks=20,main="n.pred=15",xlab="Simulated Means",ylab="Frequency")
 abline(v=mean(obs_mean_mods_15),col="red",lwd=2,lty=2)
 legend("topright",legend ="Observed mean",col ="red",lty=2,lwd=2)
 
@@ -381,12 +429,22 @@ ggplot(df_30,aes(x=obs,y=sim_mean))+
 8. Looking at your PPD plot for 30 predictors, is it indicating a "good" model? What is "good" or what is "bad" about it? You should notice that your dots (means) are close to but not on the 1:1 line; if it is a perfectly overfit model, why are the predictions not exact?
 
 ```{r, echo = TRUE}
+<<<<<<< HEAD
 #All the dots are very close on the 1:1 line, suggesting that the model can generate data patterns that are very similar to the observed value. This could be a good thing, as the model is really good at predicting the dataset itself; however, this could be a bad thing as well, suggesting a pattern of overfitting. Another bad thing observed in the model is that the confidence interval for each prediction is still large, suggesting that there is still huge uncertainty within the posterior distribution. Thus, although the model did a good job in predicting the dataset, this is solely due to the addition of the predictors, which does not necessarily increase predictive accuracy and precision but only creates an illusion of fit with a huge remained uncertainty. Thus although the model can predict the sampled datasets really well using the mean of the distribution, it does not really predict well and tell us much about the real populaiton distribution.
 
 #The predictions are not exact because there still is uncertainty within the posterior distribution, as demonstrated in the histogram for n.preds=30, where not all the posterior simulated values are concentrated at the value of the observed mean; instead, there are still values scattered around due to the innate uncertainty in the Bayesian inference process. 
+=======
+#All the dots are very close on the 1:1 line, suggesting that the model can generate data patterns that are very similar to the observed value. This could be a good thing, as the model is really good at predicting the data set, which is not surprising as there are more than 30 paramemters for 30 datapoints thus the model is capable of fine tuning each predicted data points to the observed data sampled. Furthermore, for every single point, the confidence interval is overlapping with the 1:1 line suggesting a 100% coverage. This could be a good thing as the “correct" predicted value is included in the confidence interval. However, in this case, this coverage could be attributed to the large confidence interval which is not a good thing as described below. In the model, the confidence interval for each prediction is still large, suggesting that there is still huge uncertainty within the posterior distribution. Together with the almost perfect fit of the predicted means to the 1:1 line, this suggests a pattern of overfitting, which is a bad thing.The pattern suggested that although the model did a good job in predicting the mean, this is solely due to the addition of the predictors, which does not necessarily increase predictive power but only creates an illusion of fit and actually increases uncertainty. 
+
+#The predictions are not exact because there still is uncertainty within the posterior distribution. As demonstrated in the histogram for n.preds=30@ not all the posterior simulated values are concentrated at the value of the observed mean; instead, there are still values scattered around due to the innate uncertainty in the Bayesian inference process. 
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
 ```
 
 9. So we have fit a dataset with an increasing number of random predictor variables. With every additional variable, our model gets a little better at predicting our data. What simple lesson about multivariate analyses does this exercise illustrate? In other words, what is the point of this entire problem set?
 ```{r, echo = TRUE}
+<<<<<<< HEAD
 #This exercise illustrates the fact that covariates should not be added in attempts to increase model fitting, because it creates an illusion of better fit without actually increasing the precision and accuracy of the model, hence overfitting. This is hard to see with frequentist analysis, as they treat all the parameters and inferences as fixed values; thus, the result of adding variables will only be reflected as a better fitted p-value if the analysis is not thorough (thus we see other tests that include degrees of freedom as a parameter in the test statistics). However, in Bayesian stats, the results of adding new variables are more obvious, as it only improves the accuracy of the mean but not precision that concerned with the confidence interval of the posterior distribution, thus suggesting that the "better fitted model" was only an illusion created due to higher complexity of the model. To conclude, I think a better approach in model building, as suggested by the exercise itself, is a rule of thumb that one needs at least 10 data points for every covariate. However, since this could be jeopardized by the issue of pseudoreplication, I would suggest that one only tries to add variables if it makes biological sense or is relevant to the study itself.
+=======
+#This exercise illustrates the fact that covariates should not be added in attempts to increase model fitting, because it creates an illusion of a better fit without actually increasing the precision and accuracy of the model, hence overfitting. This is hard to see with frequentist analysis, as they treat all the parameters and inferences as fixed values; thus, the result of adding variables will only be reflected as a better-fitted p-value if the analysis is not thorough (thus we see other tests that include degrees of freedom as a parameter in the test statistics). However, in Bayesian stats, the results of adding new variables are more obvious, as it only improves the accuracy of the mean but not the posterior distribution, thus suggesting that the "better-fitted model" was only an illusion created due to higher complexity of the model. To conclude, I think a better approach in model building, as suggested by the exercise itself, is a rule of thumb that one needs at least 10 data points for every covariate. However, since this could be jeopardized by the issue of pseudoreplication. According to the conclusion drawn from A7, another perspective to take when considering the question is that, instead of increasing the number of "rubbish"/meaningless predictors (like the random ones we are using here), we could try to include predictors that actually are supposed to have stronger explanatory power, which could help the model to do better in predicting the dataset and make inference about the population parameters. Hence, I would suggest that one only tries to add variables if it makes biological sense or is relevant to the study itself. All in all, this comes to the classic slang in modelling: Garbage in, garbage out.
+>>>>>>> c9cdb8f53f7c06292154ff471f929bc0d2b7fce1
 ```
