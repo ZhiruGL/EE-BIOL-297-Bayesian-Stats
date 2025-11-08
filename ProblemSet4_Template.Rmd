@@ -112,8 +112,6 @@ ppd=MCMCchains(penguin.fit_pred,params="penguin.predict")
 sim_mean=apply(ppd, 1, mean)
 obs_mean=mean(penguin)
 
-
-
 hist(sim_mean,breaks=20,main="Bayesian p-value",xlab="Simulated Means",ylab="Frequency",xlim=c(-600,600))
 abline(v =mean(obs_mean),col ="red",lwd=2,lty=2)
 legend("topright",legend ="Observed Mean",col="red",lty=2,lwd=2) 

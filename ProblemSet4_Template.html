@@ -538,8 +538,6 @@ statistic. Is our model a good fit to the data?</li>
 <pre class="r"><code>sim_mean=apply(ppd, 1, mean)
 obs_mean=mean(penguin)
 
-
-
 hist(sim_mean,breaks=20,main=&quot;Bayesian p-value&quot;,xlab=&quot;Simulated Means&quot;,ylab=&quot;Frequency&quot;,xlim=c(-600,600))
 abline(v =mean(obs_mean),col =&quot;red&quot;,lwd=2,lty=2)
 legend(&quot;topright&quot;,legend =&quot;Observed Mean&quot;,col=&quot;red&quot;,lty=2,lwd=2) </code></pre>
