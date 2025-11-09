@@ -255,17 +255,17 @@ MCMCvis::MCMCsummary(cats.fit)
 ```
   
 6. Check the PPO and traceplot for your model.
-    ```{r}
+```{r}
 
-    ```
+```
   
 7. Finally, conduct a posterior predictive check, using the average abundnace as $T(y)$, and calculate the appropriate Bayesian p-value. 
-    ```{r}
+```{r}
 
-    ```
+```
     
 8. Our posterior predictive check does not suggest that our model is appropriate for our data! What do you think is wrong with our model, and how would you fix it?
-    ```{r}
+```{r}
     
-    ```
+```
   

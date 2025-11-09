@@ -1,0 +1,102 @@
+---
+title: "Bayesian Modeling Problem Set 6"
+author: "EEB 187/297"
+date: "Due: 2025-11-13 by 11:30 am over BruinLearn"
+output: html_document
+---
+
+```{r setup, include=FALSE, results = 'hide', message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(R2jags)
+library(knitr)
+library(MCMCvis)
+library(dagitty)
+library(tidyverse)
+library(ggdag)
+```
+
+# Counting Quail 
+_For all problem sets, we will provide you with a single R Markdown file. Please complete the problem set within a local copy of this file. To turn in, please upload a fully knitted html version. Make sure to keep `echo=TRUE`, as appropriate, to show your coding._ 
+
+By now the concept of using random effects in linear models should be familiar to you in both frequentist and Bayesian frameworks. For this problem set, you will be analyzing count data for the rare and endangered Angeleno Quail (_Callipepla curtii_) collected in 2015. Three times repeatedly during the breeding season, surveyors visited 267 survey points doing targeted surveys for the quail. You – the hired data analyst – are interested in three main questions on how the abundance of quail varies by (1) elevation, (2) forest cover, and (3) the interaction between elevation and forest cover. However, there are some nuisance issues you must also account for. First, while surveys were only done on days with good weather, the wind varied substantially from survey to survey, and it’s well known that quail just don’t like wind. Second, there’s pseudoreplication, with multiple counts per site.
+
+<img src="https://dl.dropboxusercontent.com/scl/fi/hl9qx4mr1sw5jzd4stsbw/RareQuail.jpg?rlkey=jdrz46ktn0jcxasya9ofj32yd&" width="500"/>
+
+The data are stored in the R data object. The code below will load in the data. Take a moment to examine the structure of the data object “ps.data” (it’s a list). Notice that both `count` and `wind` are matrices with sites as rows and visits as columns.
+```{r, echo = T}
+load("ProblemSet6.Rdata")
+```
+
+1. Familiarize yourself with the data by creating simple plots of quail counts with elevation, forest cover, and wind. Notice that all 3 covariates are already centered and standardized. You may wish to create a vector of average counts across the three surveys for easier plotting with elevation and forest cover. 
+```{r}
+count=ps.data[["count"]]
+elevation=ps.data[["elev"]]
+forest=ps.data[["forest"]]
+wind=ps.data[["wind"]]
+avg_count=apply(count,1,mean)
+
+plot(count~wind)
+plot(avg_count ~ elevation)
+plot(avg_count ~ forest)
+```
+  
+2. As mentioned above, the data are pseudoreplicated in that sites were revisited and surveyed three times over the year. Why shouldn't we ignore this, and just treat each count as independent? In other words, what would be the problem(s) with inference from a model that treats each count as independent?
+```{r}
+#The issue is that each count is not truely independent from each other. Instead thy are interlinked as a result of the experiment design. In this case, the data from the same sites may be linked due to some hidden site specific characteristics that is not included in the model. Similarly, the sites that are visited in the same time of the eyar may also generate more similar count data due to the same reason. Thus if we treat these count as independent, we are ignoring this internal correlation which could reuslt in a biased result. 
+```
+ 
+3. Draw a DAG for the model you are about the create. Your model should account for the three main questions mentioned above, as well as the effect of wind on counts. It should also control for pseudoreplication. It should be a GLMM. Let's assume that the data are not overdistributed. Display your DAG below using the `ggdag` R package. First, build a DAG structure using `dagify()`, then plot using `ggdag()`, which uses the ggplot syntax, as shown in Lab 6.
+    
+```{r, message = F, echo = F}
+dag=dagify(
+  lambda ~ b_wind ,
+   lambda ~ b_forest,
+   lambda ~ elev, 
+   lambda ~ b_0,
+   b_0 ~ b0_tau,
+   b_0 ~ b0_mu,
+   b_wind ~  bwind_mu,
+   b_wind ~ bwind_tau
+)
+
+ggdag(dag,text=FALSE) +
+  geom_dag_text(size = 2.5)+
+  theme_dag()
+```
+  
+4. Using your DAG, write out the JAGS model code for this model. Use appropriate vague priors for all parameters and hyper-parameters. Keep in mind that your count data are stored in a two-dimensional matrix. Unless you wish to vectorize your data, it will be easier if you create two nested for-loops, a first loop over every site `i`, and a second loop over each visit `j`. Thus, your process model should be for every `count[i,j]`. If you think efficiently, you can limit your JAGS code to only have these two nested for-loops, rather than adding a third for-loop for BLUPs. 
+    ```{r}
+
+    ```
+    
+5. Prepare your list of data to send to JAGS and run your JAGS model. Check to make sure it has converged. If the convergence is skeptical, change your MCMC parameters so that the model convergences.
+    ```{r}
+    
+    ```
+     
+6. Make traceplots for your primary parameters and hyper-parameters (but not BLUPs). Check Prior-Posterior Overlap for your fixed effects. 
+    ```{r}
+
+    ```
+  
+7. Using the posterior summary, what can we learn about our hypothesized variables of interest? 
+    ```{r}
+    
+    ```
+     
+8. Let's double check that this model is an adequate fit to the data. Up until now, we've been conducting only a single posterior predictive check (PPC), using the test statistic of `mean(y)`. It's important that our model can also predict the observed spread in our data, so we should add a second PPC using the test statistic of `sd(y)`. Calculate the observed and posterior distributions for both test statistics, and plot each (make sure your plots show both observed lines and the full posterior). Calculate the Bayesian p-value for each as well. 
+    ```{r}
+
+    ```
+ 
+9. What can we conclude about our model from the PPC in question 8? How do the tests indicate that our model is fitting well? How do the tests indicate that our model is fitting poorly?
+    ```{r}
+
+    ```
+ 
+10. Using your posterior, create three plots (a, b, c), each showing how quail abundance is predicted to change with forest cover. Plot (a) should show "low elevation" (elev = -1), (b) should show middle elevation (elev = 0), and (c) should show high elevation (elev = 1). Your y-axis should be "Predicted abundance" and your x-axis should be "Elevation (scaled)". Label each plot. You can ignore the effect of wind by just assuming that you are holding your prediction constant at the average wind value (0). Similarly, we can predict to the "average" site and ignore BLUPs. Each plot should clearly show a _median_ prediction line, as well as a _89%_ credible interval in prediction around that median (to accomplish this, you will have to derive predictions from the full posterior sample of your parameters).
+
+    ```{r}
+    
+    ```
+        
