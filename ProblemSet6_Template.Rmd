@@ -13,6 +13,7 @@ library(MCMCvis)
 library(dagitty)
 library(tidyverse)
 library(ggdag)
+library(ggplot2)
 ```
 
 # Counting Quail 
@@ -49,10 +50,7 @@ plot(avg_count ~ forest)
     
 ```{r, message = F, echo = F}
 dag=dagify(
-  lambda ~ b_wind ,
-   lambda ~ b_forest,
-   lambda ~ elev, 
-   lambda ~ b_0,
+  lambda ~ b_wind+b_forest+b_elev+b_inter+b_0,
    b_0 ~ b0_tau,
    b_0 ~ b0_mu,
    b_wind ~  bwind_mu,
@@ -65,38 +63,177 @@ ggdag(dag,text=FALSE) +
 ```
   
 4. Using your DAG, write out the JAGS model code for this model. Use appropriate vague priors for all parameters and hyper-parameters. Keep in mind that your count data are stored in a two-dimensional matrix. Unless you wish to vectorize your data, it will be easier if you create two nested for-loops, a first loop over every site `i`, and a second loop over each visit `j`. Thus, your process model should be for every `count[i,j]`. If you think efficiently, you can limit your JAGS code to only have these two nested for-loops, rather than adding a third for-loop for BLUPs. 
-    ```{r}
+```{r process model}
+qs_mod<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_elev ~ dnorm(0,0.00001)
+  b_forest ~ dnorm(0,0.00001)
+  b_int ~ dnorm(0,0.00001)
+  b_wind ~ dnorm(0,0.00001)
+  tau_site ~ dgamma(0.001,0.001)
+  tau_visit ~ dgamma(0.001,0.001)
+  sigma_site <- 1 / sqrt(tau_site)
+  sigma_visit <- 1 / sqrt(tau_visit)
+  for (i in 1:site_num){
+   b_site[i] ~ dnorm(0,tau_site)
+  }
+  for (j in 1:visit_num){
+    b_visit[j] ~ dnorm(0,tau_visit)
+  }
+  
+  for (i in 1:site_num){
+    for (j in 1:visit_num){
+      count[i,j] ~ dpois(lam[i,j])
+      count.new[i,j] ~ dpois(lam[i,j])
+      log(lam[i,j])<-b0+b_elev*elev[i]+b_forest*forest[i]+b_int*elev[i]*forest[i]+(b_wind+b_visit[j])*wind[i,j]+b_site[i]
+    }
+  }
+}
 
-    ```
+
+```
     
 5. Prepare your list of data to send to JAGS and run your JAGS model. Check to make sure it has converged. If the convergence is skeptical, change your MCMC parameters so that the model convergences.
-    ```{r}
-    
-    ```
+```{r}
+set.seed(2025)
+site_num=nrow(wind) #how many sites are there
+visit_num=ncol(wind) #how many visits each site get:3 visit per site
+site=rep(1:site_num,each=visit_num)
+visit=rep(1:visit_num,times=site_num)
+total_sample=site_num*visit_num
+
+jags_data_qs<-list(
+  site_num=site_num,
+  visit_num=visit_num,
+  count=count,
+  wind=wind,
+  elev=elevation,
+  forest=forest
+)
+
+qs.fit<-jags(data=jags_data_qs,parameters.to.save=c("b0", "b_elev","b_forest","b_wind","b_int","sigma_site","sigma_visit"),model.file=qs_mod,
+                    n.chains=3,
+                    n.iter=40000,
+                    n.burnin=8000,
+                    n.thin=10)
+
+MCMCsummary(qs.fit)
+#r-hat is close to 1, suggesting convergence
+```
      
 6. Make traceplots for your primary parameters and hyper-parameters (but not BLUPs). Check Prior-Posterior Overlap for your fixed effects. 
-    ```{r}
+```{r}
+traceplot(qs.fit)
 
-    ```
+pr_norm=rnorm(15000,mean=0,sd=sqrt(1/0.00001))
+pr_gamma=rgamma(15000,0.01,0.01)
+MCMCtrace(qs.fit,params="b0",priors=pr_norm,pdf=FALSE)
+MCMCtrace(qs.fit,params="b_elev",priors=pr_norm,pdf=FALSE)
+MCMCtrace(qs.fit,params="b_forest",priors=pr_norm,pdf=FALSE)
+MCMCtrace(qs.fit,params="b_wind",priors=pr_norm,pdf=FALSE)
+MCMCtrace(qs.fit,params="sigma_site",priors=pr_gamma,pdf=FALSE)
+MCMCtrace(qs.fit,params="sigma_visit",priors=pr_gamma,pdf=FALSE)
+```
   
 7. Using the posterior summary, what can we learn about our hypothesized variables of interest? 
-    ```{r}
-    
-    ```
+```{r}
+MCMCsummary(qs.fit)
+#The mean of b0 is -0.793, meaning that the average count for all sites, without the consideration of all the other effect is e^-0.793.
+#Both elevation and wind have a highly-certain and strong negative impact on quail counts. The mean of b_wind is -1.627, which suggest that as the wind value increase by 1 the mean count of the site will change by a factor of e^-1.627. Similarly, the mean of b_elev is -1.999, thus when elevation increase by 1, the mean count of the site will change by a factor of e^-1.999
+
+#The forest cover and interaction has a very strong and highly-certain positive impact on quail counts. The mean of b_forest is 2.156, suggesting that as the forest cover increase by 1, the average count of the quail at the site will increase by a factor of e^2.156. For the interaction term, as elevation*forest cover increase by 1, the mean count at the site will increase by a factor of e^1.336
+
+#Lastly, sigma_site and sigma_visit are positive but relative low 0.256 and 0.144 respectively, suggested a likely case that most of the variation has been explained by the existing parameters and site and visit do not contain any hidden variables that offer a strong explanatory power to the count of quails.
+
+#To conclude, the model indicates that elevation and wind strongly reduce quail counts, which is sensible as quail dislike winds and climate that are cold. Forest cover and its interaction with elation strongly enhance the counts. Sites and visit contirbute little reisudal variation, suggesting the meain environmental predictors capture most of the variation within the dataset.
+```
      
 8. Let's double check that this model is an adequate fit to the data. Up until now, we've been conducting only a single posterior predictive check (PPC), using the test statistic of `mean(y)`. It's important that our model can also predict the observed spread in our data, so we should add a second PPC using the test statistic of `sd(y)`. Calculate the observed and posterior distributions for both test statistics, and plot each (make sure your plots show both observed lines and the full posterior). Calculate the Bayesian p-value for each as well. 
-    ```{r}
+```{r}
+#qs.check<-jags(data=jags_data_qs,parameters.to.save=c("count.new"),model.file=qs_mod,
+                    #n.chains=3,
+                    #n.iter=40000,
+                    #n.burnin=8000,
+                    #n.thin=10)
 
-    ```
+ppd=MCMCchains(qs.check,params="count.new")
+ppd_mean=apply(ppd, 1, mean)
+ppd_sd=apply(ppd, 1, sd)
+obs_mean=mean(count)
+obs_sd=sd(count)
+df=data.frame(mean=ppd_mean,sd=ppd_sd)
+
+hist(ppd_mean,breaks=20,main="Posterior Prediction Check for Mean",xlab="Simulated Means",ylab="Frequency")
+abline(v=obs_mean,col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col="red",lty=2,lwd=2)
+
+hist(ppd_sd,breaks=20,main="Posterior Prediction Check for SD",xlab="Simulated Sd",ylab="Frequency")
+abline(v=obs_sd,col="red",lwd=2,lty=2)
+legend("topright",legend ="Observed mean",col="red",lty=2,lwd=2)
+
+p_mean=mean(ppd_mean>obs_mean)
+p_sd=mean(ppd_sd>obs_sd)
+
+p_mean
+p_sd
+```
  
 9. What can we conclude about our model from the PPC in question 8? How do the tests indicate that our model is fitting well? How do the tests indicate that our model is fitting poorly?
-    ```{r}
+```{r}
+#The Bayesian p value for mean is 0.492 which is very close to 0.5, suggesting a good fit, thus our model is fitting well in terms of predicting the mean counts of quails at each site.
 
-    ```
+#Meanwhile, the Bayeisna p value for the standard deviation is 0.794, which is far from 0.5, suggesting a poor fit, thus our model is fitting poorly in terms of predicting the standard deviation (i.e the variation between different sites) of quial counts. The model generally overestimate the heterogeneity in quail counts between sites as suggested by the histgram where the right line is deviated to the left of the center of the plot, suggesting that the more than 50% of the posterior prediction have a higher standard deviation than observed.
+```
  
 10. Using your posterior, create three plots (a, b, c), each showing how quail abundance is predicted to change with forest cover. Plot (a) should show "low elevation" (elev = -1), (b) should show middle elevation (elev = 0), and (c) should show high elevation (elev = 1). Your y-axis should be "Predicted abundance" and your x-axis should be "Elevation (scaled)". Label each plot. You can ignore the effect of wind by just assuming that you are holding your prediction constant at the average wind value (0). Similarly, we can predict to the "average" site and ignore BLUPs. Each plot should clearly show a _median_ prediction line, as well as a _89%_ credible interval in prediction around that median (to accomplish this, you will have to derive predictions from the full posterior sample of your parameters).
 
-    ```{r}
-    
-    ```
+```{r}
+ppd=MCMCchains(qs.check,params="count.new")
+b0=MCMCchains(qs.fit,params="b0")
+b_elev=MCMCchains(qs.fit,params="b_elev")
+b_forest=MCMCchains(qs.fit,params="b_forest")
+b_int=MCMCchains(qs.fit,params="b_int")
+
+forest_cov_pred=seq(min(forest),max(forest),by=0.01)
+elev_discrete=c(-1,0,1)
+
+plot_list <- list()
+for (i in elev_discrete){
+  median_ppd=c()
+  lower_ppd=c()
+  upper_ppd=c()
+  elev_val_used=c()
+  prediction=c()
+  for (j in 1:length(forest_cov_pred)){
+  forest_cov_val=forest_cov_pred[j]
+  print(forest_cov_val)
+  count=exp(b0+b_elev*i+b_forest*forest_cov_val+b_int*i*forest_cov_val)
+  lower_ppd[j]=quantile(count,0.055)
+  upper_ppd[j]=quantile(count,0.945)
+  elev_val_used[j]=i
+  prediction[j]=median(count)
+  }
+  plot_list[[as.character(i)]] <- data.frame(
+    forest_cover=forest_cov_pred,
+    median_pred=prediction,
+    lower=lower_ppd,
+    upper=upper_ppd,
+    elevation=elev_val_used)
+}
+ggplot(plot_list[["-1"]],aes(x=forest_cover))+
+  geom_ribbon(aes(ymin = lower, ymax = upper,col="89% CI"), fill="red",alpha=0.3)+
+  geom_line(aes(y = median_pred, col="Mean"), size = 1)+
+  labs(title = "Predicted Quail Abundance with 89% Confidence Interval (Elevation=-1)",x="Forest Cover",y="Predicted Abundance",col="Key")
+
+ggplot(plot_list[["0"]],aes(x=forest_cover))+
+  geom_ribbon(aes(ymin = lower, ymax = upper,col="89% CI"), fill="red",alpha=0.3)+
+  geom_line(aes(y = median_pred, col="Mean"), size = 1)+
+  labs(title = "Predicted Quail Abundance with 89% Confidence Interval (Elevation=0)",x="Forest Cover",y="Predicted Abundance",col="Key")
+
+ggplot(plot_list[["1"]],aes(x=forest_cover))+
+  geom_ribbon(aes(ymin = lower, ymax = upper,col="89% CI"), fill="red",alpha=0.3)+
+  geom_line(aes(y = median_pred, col="Mean"), size = 1)+
+  labs(title = "Predicted Quail Abundance with 89% Confidence Interval (Elevation=1)",x ="Forest Cover",y = "Predicted Abundance",col="Key")
+
+```
         
