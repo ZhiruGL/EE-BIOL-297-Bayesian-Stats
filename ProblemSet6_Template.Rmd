@@ -150,11 +150,11 @@ MCMCsummary(qs.fit)
      
 8. Let's double check that this model is an adequate fit to the data. Up until now, we've been conducting only a single posterior predictive check (PPC), using the test statistic of `mean(y)`. It's important that our model can also predict the observed spread in our data, so we should add a second PPC using the test statistic of `sd(y)`. Calculate the observed and posterior distributions for both test statistics, and plot each (make sure your plots show both observed lines and the full posterior). Calculate the Bayesian p-value for each as well. 
 ```{r}
-#qs.check<-jags(data=jags_data_qs,parameters.to.save=c("count.new"),model.file=qs_mod,
-                    #n.chains=3,
-                    #n.iter=40000,
-                    #n.burnin=8000,
-                    #n.thin=10)
+qs.check<-jags(data=jags_data_qs,parameters.to.save=c("count.new"),model.file=qs_mod,
+                    n.chains=3,
+                    n.iter=40000,
+                    n.burnin=8000,
+                    n.thin=10)
 
 ppd=MCMCchains(qs.check,params="count.new")
 ppd_mean=apply(ppd, 1, mean)
@@ -206,7 +206,6 @@ for (i in elev_discrete){
   prediction=c()
   for (j in 1:length(forest_cov_pred)){
   forest_cov_val=forest_cov_pred[j]
-  print(forest_cov_val)
   count=exp(b0+b_elev*i+b_forest*forest_cov_val+b_int*i*forest_cov_val)
   lower_ppd[j]=quantile(count,0.055)
   upper_ppd[j]=quantile(count,0.945)
