@@ -198,10 +198,8 @@ p_sd=mean(ppd_sd>obs_sd)
 p_mean
 p_sd
 
-#The p values are 0 and 1 
-#this is reasonable beacuse we are including observation probabilty into the model thus the estiamted average count should be larger than the observed value so that an adequate number could be observed
-
-#For the standard deviation, the posterior predictive values are consistently smaller than the observed ones. This can be attributed to the fact that different visits introduce additional noise into the observed dataset. However, this extra variability is accounted for and partially corrected by the inclusion of a random effect in the model in both the abundance and observation process, which reduces the variation in the predicted dataset.
+#The p values are 0.479 and 0.675
+#Thus the model is becoming better in predicting both the mean and standard deviation of the observed dataset
 ```
  
 9. Using your posterior, create three plots (a, b, c), each showing how true quail abundance is predicted to change with forest cover. Plot (a) should show "low elevation" (elev = -1), (b) should show middle elevation (elev = 0), and (c) should show high elevation (elev = 1). Your y-axis should be "Predicted abundance" and your x-axis should be "Elevation (scaled)". Label each plot.  Each plot should clearly show a _median_ prediction line, as well as a _89%_ credible interval in prediction around that median (to accomplish this, you will have to derive predictions from the full posterior sample of your parameters).
