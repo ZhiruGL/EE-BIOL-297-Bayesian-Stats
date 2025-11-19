@@ -86,9 +86,9 @@ qs_mod<-function(){
     
 3. Given that we ran an analysis last week and estimated parameters for this species. Would it be advantageous to use the findings from last week's analysis as informed priors for the current analysis? Why or why not?
 ```{r}
-# I Do not think it would be advantagous to use the finding sfrom last week's analysis as informed priors for the current analysis. The issue is that in last week analysis, one of the underlying assumptions is that there is perfect observation of the indiviudals within the community.However, in this week we are adding imperfect observaiton into the model. Thus if we use last week's estimated parameters as priors, the priors may not necessarily cover all the pisterior distirbution of the parameter this weeks.More speciically, it is very likely that the posterior distirbution for the covariates related to counts such as b_0 b_forest we gained form this week would be consistently larger than what have been got last week due to the effect of imperefect observaiton being added in. 
+# I do not think it would be advantageous to use the findings from last week's analysis as informed priors for the current analysis. The issue is that in last week's analysis, one of the underlying assumptions is that there is perfect observation of the individuals within the community. However, in this week we are adding imperfect observation into the model. Thus, if we use last week's estimated parameters as priors, the priors may not necessarily cover all the posterior distribution of the parameters this week. More specifically, it is very likely that the posterior distribution for the covariates related to counts, such as b_0 and b_forest, that we gained from this week would be consistently larger than what we got last week due to the effect of imperfect observation being added in. 
 
-#Furthermore, we are also removign the effect of wind out from the covaraits of counting, thus this would chagne the strucure of the model, which would cause the priors to be inaccurate to be used in this week's analysis.
+#Furthermore, we are also removing the effect of wind from the covariates of counting; thus, this would change the structure of the model, which would cause the priors to be inaccurate to use in this week's analysis.
 ```
    
 4. Prepare your list of data to send to JAGS and run your JAGS model. Check to make sure it has converged. If the convergence is skeptical, change your MCMC parameters so that the model convergences.  As discussed in class and shown in Lab 7, if you receive a `Node inconsistent with parents` error from JAGS, this indicates that you need to give JAGS plausible initial values for the latent variable, `N`. 
@@ -114,7 +114,7 @@ jags_data_qs<-list(
   forest=forest
 )
 
-qs.fit<-jags(data=jags_data_qs,parameters.to.save=c("b0", "b_elev","b_forest","b_int","sigma_site","alpha_0","alpha_wind","alpha_forest"),model.file=qs_mod,
+qs.fit<-jags(data=jags_data_qs,parameters.to.save=c("b0", "b_elev","b_forest","b_int","tau_site","sigma_site","alpha_0","alpha_wind","alpha_forest"),model.file=qs_mod,
              inits=list(list(N=apply(count,1,max)+1),
                         list(N=apply(count,1,max)+1),
                         list(N=apply(count,1,max)+1)),
@@ -139,8 +139,8 @@ MCMCsummary(qs.fit)
 5. Make traceplots for your slope and intercept parameters. Check Prior-Posterior Overlap. Note that you may wish to do that in two different commands, if you used multiple priors in your model. 
 ```{r}
 traceplot(qs.fit)
+#as in last week we only calculate hte PPO of fixed effect, excluding the random effect.
 pr_norm=rnorm(15000,mean=0,sd=sqrt(1/0.00001))
-pr_gamma=1/sqrt(rgamma(15000,0.01,0.01))
 MCMCtrace(qs.fit,params="b0",priors=pr_norm,pdf=FALSE)
 MCMCtrace(qs.fit,params="b_elev",priors=pr_norm,pdf=FALSE)
 MCMCtrace(qs.fit,params="b_int",priors=pr_norm,pdf=FALSE)
@@ -152,7 +152,7 @@ MCMCtrace(qs.fit,params="alpha_forest",priors=pr_norm,pdf=FALSE)
       
 6. Your traceplots should look quite different for the parameters for detection versus the parameters for abundance (e.g., compare traceplots for the effect of forest on abundance vs detection). Why should MCMC be more or less efficient for abundance versus detection processes?
 ```{r}
-#MCMC for abundance is much more efficient than the detection processes. I think one of the main reasons is that the detection parameters are highly correlated to N, hence the value of the abundance parameters in each MCMC step. Thus, as a result, the parameters in the detection processes would demonstrate a higher interrelation between steps when put into a MCMC process: besides the autocorrelation that is introduced by the MCMC process of itself, they are also gaining autocorrelation from the MCMC process of the abundance parameters. Thus, the MCMC tends to be less efficient for the detection processes. 
+#MCMC for abundance is much more efficient than the detection processes(looks more like a hairy caterpillar, while that for the detection processes are much more diffused). I think one of the main reasons is that the detection parameters are highly correlated to N, hence the value of the abundance parameters in each MCMC step. Thus, as a result, the parameters in the detection processes would demonstrate a higher interrelation between steps when put into an MCMC process: besides the autocorrelation that is introduced by the MCMC process itself, they are also gaining autocorrelation from the MCMC process of the abundance parameters. Thus, the MCMC tends to be less efficient for the detection processes.
 ```
    
  
@@ -255,9 +255,9 @@ ggplot(plot_list[["1"]],aes(x=forest_cover))+
         
 10. Compare your plots for #9 above to your similar plots from Problem Set 6, where you modeled this data using a GLMM. How are the plots similar? How are they different? If there are major differences, explain why the N-mixture model is producing these differences?
 ```{r}
-#The plots looks similar in terms of their shape. This is reasonable as most of the biological process in terms of how elevation and forest cover are descibing teh abundance are similar between the two models thus they should be similar.
+#The plots look similar in terms of their shape. This is reasonable, as most of the biological processes in terms of how elevation and forest cover are describing the abundance are similar between the two models; thus, they should be similar.
 
-#However there is one thign to notice is that the plots above predict much more count per site when comapred to what have been produced in PS6, this is because that we have now taken into account the process detection, thus the number of quails per sites need to be larger than the amount of quails that are actually observed/the amounts of quails when observation is perfect. Thus the counts in the plots above are much higher than that in PS 6
+#However, one thing to notice is that the plots above predict much more count per site when compared to what was produced in PS6. This is because we have now taken into account the detection process; thus, the number of quails per site needs to be larger than the amount of quails that are actually observed/the amount of quails when observation is perfect, which is the underlying assumption in PS6. Thus, the counts in the plots above are much higher than those in PS6
 ```
     
 11. Unlike our GLMM model, our N-mixture model is modeling two key parameters: true abundance ($N$) and probability of detection ($p$). Similar to question #9, create a predicted response plot showing the median response and 89% credible ribbon, but this time, plot the probability of detection as a function of wind.
