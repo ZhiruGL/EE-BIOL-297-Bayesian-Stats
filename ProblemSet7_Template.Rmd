@@ -48,8 +48,6 @@ dag=dagify(
   count ~ p+N,
   N ~ lambda,
   lambda ~ b_forest+b_elev+b_inter+b_0,
-  b_0 ~ b0_tau,
-  b_0 ~ b0_mu,
   p~alpha_0+alpha_wind+alpha_forest
 )
 
@@ -68,12 +66,9 @@ qs_mod<-function(){
   alpha_0 ~ dnorm(0,0.00001)
   alpha_wind ~ dnorm(0,0.00001)
   alpha_forest ~ dnorm(0,0.00001)
-  tau_site ~ dgamma(0.001,0.001)
-  sigma_site <- 1 / sqrt(tau_site)
   for (j in 1:site_num){
     N[j] ~ dpois(lam[j])
-    log(lam[j])<-b0+b_elev*elev[j]+b_forest*forest[j]+b_int*elev[j]*forest[j]+b_site[j]
-    b_site[j] ~ dnorm(0,tau_site)
+    log(lam[j])<-b0+b_elev*elev[j]+b_forest*forest[j]+b_int*elev[j]*forest[j]
     for (k in 1:visit_num){
       logit(p[j,k])=alpha_0+alpha_wind*wind[j,k]+alpha_forest*forest[j]
       count[j,k] ~ dbinom(p[j,k],N[j])
@@ -114,7 +109,7 @@ jags_data_qs<-list(
   forest=forest
 )
 
-qs.fit<-jags(data=jags_data_qs,parameters.to.save=c("b0", "b_elev","b_forest","b_int","tau_site","sigma_site","alpha_0","alpha_wind","alpha_forest"),model.file=qs_mod,
+qs.fit<-jags(data=jags_data_qs,parameters.to.save=c("b0", "b_elev","b_forest","b_int","alpha_0","alpha_wind","alpha_forest"),model.file=qs_mod,
              inits=list(list(N=apply(count,1,max)+1),
                         list(N=apply(count,1,max)+1),
                         list(N=apply(count,1,max)+1)),
@@ -159,19 +154,17 @@ MCMCtrace(qs.fit,params="alpha_forest",priors=pr_norm,pdf=FALSE)
 7. Using the posterior summary, what can we learn about our hypothesized variables of interest? 
 ```{r}
 MCMCsummary(qs.fit)
-#The mean of b0 is 0.624, meaning that the average count for all sites, without the consideration of all the other effect is e^0.624
+#The mean of b0 is 0.635, meaning that the average count for all sites, without the consideration of all the other effect is e^0.635
 
-#Elevation has a highly-certain and strong negative impact on quail counts. The mean of b_elev is -2.059. Thus, when elevation increase by 1, the mean count of the site will change by a factor of e^-2.059
+#Elevation has a highly-certain and strong negative impact on quail counts. The mean of b_elev is -2.064. Thus, when elevation increase by 1, the mean count of the site will change by a factor of e^-2.064
 
-#Both canopy cover and the ineraction between canopy cover and elevation have a positive impact on the count fo quails, and we are very much confident about this effect. On average, when canopy cover and the interaction between canopy cover and elevation increase by 1 unit, the expected abundance of quails at that site is increase by a factor of e^2.14 and e^1.29, respectively
+#Both canopy cover and the interaction between canopy cover and elevation have a positive impact on the count fo quails, and we are very much confident about this effect. On average, when canopy cover and the interaction between canopy cover and elevation increase by 1 unit, the expected abundance of quails at that site is increase by a factor of e^2.14 and e^1.29, respectively
 
-#Sigma_site is positive but relative low: 0.0715, suggesting that most of the variation has been explained by the existing parameters and site  do not contain any hidden variables that offer a strong explanatory power to the count of quails.
+#alpha_0's effect on observation probability is strongly negative with high certainty. The mean of alpha_0 is -0.912, thus the average odd (not probability) of successful observation without considering other effect is e^-0.912.
 
-#alpha_0's effect on observation probability is strongly negative with high certainty. The mean of alpha_0 is -0.894, thus the average odd (not probability) of successful observation without considering other effect is e^-0.894.
+#alpha_wind has a very strong negative and highly certain effect on observation success. The mean of alpha_wind is -2.97, suggesting that the average odd of successful observation would change by a factor of e^-2.97 when wind increase by 1 unit. Thus we are highly confident that wind negatively impacts our observation success for quails
 
-#alpha_wind has a very strong negative and highly certain effect on observation success. The mean of alpha_wind is -2.99, suggesting that the average odd of successful observation would change by a factor of e^-2.98 when wind increase by 1 unit. Thus we are highly confident that wind negatively impacts our observation success for quails
-
-#alpha_forest has a 95% confidence interval overlap with 0, thus we are uncertain whether it has any actual impact on the observation success or not. Moreover the mean value is small: 0.0131. Thus it is safe to say that canopy cover does not actually contribute much to the detection process of quails
+#alpha_forest has a 95% confidence interval overlap with 0, thus we are uncertain whether it has any actual impact on the observation success or not. Moreover the mean value is small: 0.0143. Thus it is safe to say that canopy cover does not actually contribute much to the detection process of quails
 
 ```
      
@@ -198,7 +191,7 @@ p_sd=mean(ppd_sd>obs_sd)
 p_mean
 p_sd
 
-#The p values are 0.479 and 0.675
+#The p values are 0.474 and 0.653
 #Thus the model is becoming better in predicting both the mean and standard deviation of the observed dataset
 ```
  
