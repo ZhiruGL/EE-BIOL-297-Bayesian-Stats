@@ -1,0 +1,102 @@
+---
+title: "Bayesian Modeling Problem Set 8"
+author: "EEB 187/297"
+date: "Due: 2025-12-01 by 11:30 am over BruinLearn"
+output: html_document
+---
+
+```{r setup, include=FALSE, results = 'hide', message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(R2jags)
+library(kableExtra)
+library(knitr)
+library(MCMCvis)
+library(vioplot)
+library(tidyverse)
+library(loo)
+```
+
+# Which Quail? Bayes Quail!
+_For all problem sets, we will provide you with a single R Markdown file. Please complete the problem set within a local copy of this file. To turn in, please upload a fully knitted html version. Make sure to keep `echo=TRUE`, as appropriate, to show your coding._ 
+
+<img src="https://dl.dropboxusercontent.com/scl/fi/4g3tjz1z2gg7b9olamkrt/MultiQuail.png?rlkey=anc4y17u1h6kf1sq67zmn25sm&" width="500"/>
+
+
+Following your successful publication in the journal _Science_ on the environmental determinants of the Angeleno Quail, your inbox is inundated with requests from potential collaborators seeking your statistical skills. One such email catches your eye, a desperate letter from the famous Dr. D.E. FitzFutzypants, director of the world-famous Callipepla Lab of Ornithology. Dr. FitzFutzypants presents you with a very rare dataset on the occurrence of a sister-taxa, the Accidental Quail (_Callipepla serendipita_) from the Sierra Accidentalis in Mexico. Dr. FitzFutzypants collected these data while a graduate student and has been sweating, worrying, and generally futzing with them ever since. The data consist of presence-absence surveys at 1000 different points. Each point was visited only once between the years of 1975-1979 (sadly, this means that an occupancy model is impossible; luckily, Dr. FitzFutzypants is incredibly talented at quail finding, so we can assume his detection is near perfect). 
+
+Dr. FitzFutzypants has been trying to figure out what environmental factors are responsible for where the quail are found, and through his futzing, has narrowed it down to the following set of potential variables: elevation (ft); minimum annual temperature (°C); maximum annual temperature (°C); annual precipitation (cm); and tree canopy cover (%).
+
+He is pretty sure that no more than 2 of these variables are ultimately responsible for the distribution of the quail, but concedes that he is not positive that relationships are strictly monotonic. 
+
+The data are in single data.frame:
+```{r, echo = FALSE}
+quail <- read.csv("https://dl.dropboxusercontent.com/scl/fi/k6wxkckbnu37cr59d7epn/AccidentalQuail.csv?rlkey=rkvyfz16s8mvm2vsh7idi0nz9&")
+kable(head(quail), "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+```
+Help a scientist out!
+
+1. It is always useful to explore a new dataset via visualization prior to model building. Plot the observed quail data as a function of each of the five covariates. Use this exploration to decide which variables likely might be linearly related and which might contain quadratic (non-monotonic) relationships. Since the response ($y$) is binary (presence/absence), a scatterplot alone is difficult to see any relationship. Try adding a flexible spline through the data in order to visualize the relationship. In Base R, you can do fit a spline using `smooth.spline(x, y, df = 5)` and then plot it with `lines()`. 
+    ```{r}
+    
+    ```
+ 
+2. Interpret the plots and exploration from step #1. Which of the relationships look strictly linear (e.g., always increasing or always decreasing)? Which variables look like they might be quadratic (e.g., humped or troughed)?
+    ```{r}
+    
+    ```
+  
+3. At the same time, some of our predictors may be highly correlated with each other. Use `cor()` to calculate the Pearson correlation coefficients ($\rho$) between all five predictors^[Just feed the data.frame without `y` into `cor()` and it will give you a matrix]. How correlated are your variables? In general, it is not advisable to build a model with two predictors where $\rho \ge 0.8$. Keeping that in mind, which pairs of predictors should not go in the same model together?
+    ```{r}
+    
+    ```
+
+4. Using your explorations of the data (#1-3), write out (in words or pseudo-code) 12 models to use in your candidate model set. One of your 12 models should be the 'null' model (i.e., no covariates, just an intercept). Remember, as described above, Dr. FitzFutzypants is confident that no more than 2 variables are responsible for explaining quail occurrence. Finally, if you decided that a relationship is likely quadratic (question #2), only test models including the quadratic effect (i.e., $y=b_0+b_1x+b_2x^2+...$, if you decided $x$ should be quadratic), don't also test models with only a linear effect (i.e., $y=b_0+b_1x+...$, if you decided $x$ should be quadratic). Write out (in words or pseudo-code) and number your 12 models below:
+    ```{r}
+    # 1. 
+    # 2. 
+    # 3. 
+    # 4. 
+    # 5. 
+    # 6. 
+    # 7. 
+    # 8. 
+    # 9. 
+    # 10.
+    # 11.
+    # 12.
+    ```
+   
+
+5. Using your model list, write out JAGS model code for each the twelve models. Store each model function with a different name, for easy reference. Since we are going to be using LOOIC for model comparison, make sure to add a line to your model (see Lecture 08-1) that computes the log predictive density (i.e., log likelihood) for every data point. This is done in JAGS using functions that start with `logdensity.`. Since our model is binary, it is Bernoulli distributed, thus we will use `loglik[i] <- logdensity.bern(y[i], p[i])`. Since we will not be doing posterior predictive checks in this problem set, you do not have to include `y.pred` in your model. 
+    ```{r}
+   
+    ```
+    
+6. Create your `jags.data` object and run each of your 12 models. Store the output of each model into its own object (e.g. `out.m1` for model 1). Remember to monitor the parameter `loglik`! Use the following MCMC settings to help speed things up: `n.chains = 3, n.iter = 2000, n.burnin = 500, n.thin = 10`.
+    ```{r, echo = TRUE, results='hide', message=FALSE, warning=FALSE}
+    
+    ```
+   
+7. Use `loo()` in the loo package to calculate the loo for each model. `loo()` expects as input a matrix of your log-likelihoods for every point ($\widehat{elpd}$). You can extract this for each model using `MCMCchains(..., params = "loglik")`.^[Make sure that you are only including `loglik` as the parameter sent to `loo()`] Store the LOOIC values in a data.frame. Include a column for `model` in your data.frame that includes a text descriptor of each of your models (question #4). 
+    ```{r}
+    
+    ```
+    
+8. Sort your table such that the lowest LOOIC model is at the top. Add a column called "delta" which calculates $\Delta LOOIC$. 
+    ```{r}
+    
+    ```
+      
+9. Display your LOOIC table below (you can un-comment the code):
+    ```{r, echo = FALSE}
+  #kable(YOUR_DATAFRAME_HERE, "html") %>%
+  #kable_styling(full_width = FALSE) %>%
+  #column_spec(1, extra_css = "padding-right: 50px;")
+    ```
+ 
+10. What do you conclude about the factors explaining the occurrence of the Accidental Quail? What do you report back to Dr. FitzFutzypants?
+    ```{r}
+    
+    ```
