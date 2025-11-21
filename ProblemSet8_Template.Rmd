@@ -38,65 +38,401 @@ kable(head(quail), "html") %>%
 Help a scientist out!
 
 1. It is always useful to explore a new dataset via visualization prior to model building. Plot the observed quail data as a function of each of the five covariates. Use this exploration to decide which variables likely might be linearly related and which might contain quadratic (non-monotonic) relationships. Since the response ($y$) is binary (presence/absence), a scatterplot alone is difficult to see any relationship. Try adding a flexible spline through the data in order to visualize the relationship. In Base R, you can do fit a spline using `smooth.spline(x, y, df = 5)` and then plot it with `lines()`. 
-    ```{r}
-    
-    ```
+```{r}
+plot(quail$elevation,quail$y,xlab="Elevation",ylab="quail count")
+sp=smooth.spline(quail$elevation,quail$y,df=5)
+lines(sp,col="red",legend="Smooth spline")
+
+plot(quail$max.temp,quail$y,xlab="Max Temperature",ylab="quail count")
+sp=smooth.spline(quail$max.temp,quail$y,df=5)
+lines(sp,col="red",legend="Smooth spline")
+
+plot(quail$min.temp,quail$y,xlab="Minimum Temperature",ylab="quail count")
+sp=smooth.spline(quail$min.temp,quail$y,df=5)
+lines(sp,col="red",legend="Smooth spline")
+
+plot(quail$canopy,quail$y,xlab="Canopy Coverage",ylab="quail count")
+sp=smooth.spline(quail$canopy,quail$y,df=5)
+lines(sp,col="red",legend="Smooth spline")
+
+plot(quail$precipitation,quail$y,xlab="Precipitation",ylab="quail count")
+sp=smooth.spline(quail$precipitation,quail$y,df=5)
+lines(sp,col="red",legend="Smooth spline")
+
+```
  
 2. Interpret the plots and exploration from step #1. Which of the relationships look strictly linear (e.g., always increasing or always decreasing)? Which variables look like they might be quadratic (e.g., humped or troughed)?
-    ```{r}
-    
-    ```
+```{r}
+#It seems that elevation and max temperature tend to be quadratically related to the quail counts while the other three (minimum temperature, canopy coverage and precipitation) are linearly related to quail counts. However canopy seems to be humped further beyond 100, but since it is impossible to have more than 100% canopy coverage, it is still linearly related to the quail count   
+```
   
 3. At the same time, some of our predictors may be highly correlated with each other. Use `cor()` to calculate the Pearson correlation coefficients ($\rho$) between all five predictors^[Just feed the data.frame without `y` into `cor()` and it will give you a matrix]. How correlated are your variables? In general, it is not advisable to build a model with two predictors where $\rho \ge 0.8$. Keeping that in mind, which pairs of predictors should not go in the same model together?
-    ```{r}
-    
-    ```
+```{r}
+cor(quail) 
+
+#The pairs of paramemters that should not go into the same model:
+#max.temp & elevation (cor=-0.835)
+#min.temp & elevation (cor=-0.953)
+#assuming a 0.8 threshold with 1sf, min.temp and max.temp should also not go into the same model (cor=0.796=0.8(1 s.f))
+
+```
 
 4. Using your explorations of the data (#1-3), write out (in words or pseudo-code) 12 models to use in your candidate model set. One of your 12 models should be the 'null' model (i.e., no covariates, just an intercept). Remember, as described above, Dr. FitzFutzypants is confident that no more than 2 variables are responsible for explaining quail occurrence. Finally, if you decided that a relationship is likely quadratic (question #2), only test models including the quadratic effect (i.e., $y=b_0+b_1x+b_2x^2+...$, if you decided $x$ should be quadratic), don't also test models with only a linear effect (i.e., $y=b_0+b_1x+...$, if you decided $x$ should be quadratic). Write out (in words or pseudo-code) and number your 12 models below:
     ```{r}
-    # 1. 
-    # 2. 
-    # 3. 
-    # 4. 
-    # 5. 
-    # 6. 
-    # 7. 
-    # 8. 
-    # 9. 
-    # 10.
-    # 11.
-    # 12.
+    # 1. y=b_0
+    # 2. y=b_0+b_elevation_line*elevation+b_elevation_quad*elevation^2 (elevation only)
+    # 3. y=b_0+b_max_temp_line*max_temp+b_max.temp_quad*max.temp^2 (max.temp only)
+    # 4. y=b_0+b_min.temp*min.temp (min.temp only)
+    # 5. y=b_0+b_canopy*canopy (canopy only)
+    # 6. y=b_0+b_precipitation*precipitation  (precipitation only)
+    # 7. y=b_0+b_elevation_line*elevation+b_elevation*elevation^2+b_canopy*canopy (elevation + canopy)
+    # 8. y=b_0+b_elevation_line*elevation+b_elevation*elevation^2+b_precipitation*precipitation (elevation + precipitation)
+    # 9. y=b_0+b_max_temp_line*max_temp+b_max.temp*max.temp^2+b_canopy*canopy (max.temp + canopy cover)
+    # 10.y=b_0+b_max_temp_line*max_temp+b_max.temp*max.temp^2+b_precipitation*precipitation (max temp + precipitation)
+    # 11.y=b_0+b_canopy*canopy+b_min.temp*min.temp (canopy + min.temp)
+    # 12.y=b_0+b_canopy*canopy+b_precipitation*precipitation (canopy + precipitation)
+    # 13. y=b_0+b_min.temp*min.temp+b_precipitation * precipitation (min.temp+precipitation)
     ```
    
 
 5. Using your model list, write out JAGS model code for each the twelve models. Store each model function with a different name, for easy reference. Since we are going to be using LOOIC for model comparison, make sure to add a line to your model (see Lecture 08-1) that computes the log predictive density (i.e., log likelihood) for every data point. This is done in JAGS using functions that start with `logdensity.`. Since our model is binary, it is Bernoulli distributed, thus we will use `loglik[i] <- logdensity.bern(y[i], p[i])`. Since we will not be doing posterior predictive checks in this problem set, you do not have to include `y.pred` in your model. 
-    ```{r}
-   
-    ```
+```{r}
+#null model
+mod_null<-function(){
+  b0 ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#(elevation only)
+mod_elev<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_elev_line ~ dnorm(0,0.00001)
+  b_elev_quad ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_elev_line*elevation[i]+b_elev_quad*elevation[i]^2
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#max.temp only
+mod_max_temp<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_maxtemp_line ~ dnorm(0,0.00001)
+  b_maxtemp_quad ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_maxtemp_line*max.temp[i]+b_maxtemp_quad*max.temp[i]^2
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#min.temp only
+mod_min_temp<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_mintemp ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_mintemp*min.temp[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#canopy only
+mod_canopy<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_canopy ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_canopy*canopy[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#precipitation only
+mod_precip<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_precip ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_precip*precipitation[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#elev+canopy
+mod_elev_canopy<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_canopy ~ dnorm(0,0.00001)
+  b_elev_line ~ dnorm(0,0.00001)
+  b_elev_quad ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_elev_line*elevation[i]+b_elev_quad*elevation[i]^2+b_canopy*canopy[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+
+#elev+precip
+mod_elev_precip<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_precip ~ dnorm(0,0.00001)
+  b_elev_line ~ dnorm(0,0.00001)
+  b_elev_quad ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_elev_line*elevation[i]+b_elev_quad*elevation[i]^2+b_precip*precipitation[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+} 
+
+#max temp + canopy
+mod_max_temp_canopy<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_maxtemp_line ~ dnorm(0,0.00001)
+  b_maxtemp_quad ~ dnorm(0,0.00001)
+  b_canopy ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_maxtemp_line*max.temp[i]+b_maxtemp_quad*max.temp[i]^2+b_canopy*canopy[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+}
+
+#max temp + precip
+mod_max_temp_precip<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_maxtemp_line ~ dnorm(0,0.00001)
+  b_maxtemp_quad ~ dnorm(0,0.00001)
+  b_precip ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~ dbern(p[i])
+    logit(p[i])=b0+b_maxtemp_line*max.temp[i]+b_maxtemp_quad*max.temp[i]^2+b_precip*precipitation[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+}
+
+#canopy + precip
+mod_canopy_precip<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_canopy ~ dnorm(0,0.00001)
+  b_precip ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_precip*precipitation[i]+b_canopy*canopy[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+}
+
+#canopy + min_temp
+mod_canopy_min_temp<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_canopy ~ dnorm(0,0.00001)
+  b_mintemp ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_canopy*canopy[i]+b_mintemp*min.temp[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+}
+
+# min_temp + precipitation
+mod_min_temp_precip<-function(){
+  b0 ~ dnorm(0,0.00001)
+  b_precip ~ dnorm(0,0.00001)
+  b_mintemp ~ dnorm(0,0.00001)
+  for (i in 1:n){
+    y[i] ~dbern(p[i])
+    logit(p[i])=b0+b_mintemp*min.temp[i]+b_precip*precipitation[i]
+    loglik[i]<-logdensity.bern(y[i],p[i])
+  }
+}
+```
     
 6. Create your `jags.data` object and run each of your 12 models. Store the output of each model into its own object (e.g. `out.m1` for model 1). Remember to monitor the parameter `loglik`! Use the following MCMC settings to help speed things up: `n.chains = 3, n.iter = 2000, n.burnin = 500, n.thin = 10`.
-    ```{r, echo = TRUE, results='hide', message=FALSE, warning=FALSE}
-    
-    ```
+```{r, echo = TRUE, results='hide', message=FALSE, warning=FALSE}
+jags_data <- list(
+  n=nrow(quail),
+  y=quail$y,
+  elevation=quail$elevation,
+  max.temp=quail$max.temp,
+  min.temp=quail$min.temp,
+  canopy=quail$canopy,
+  precipitation=quail$precipitation
+)
+
+
+out_null<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_null,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_elev<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_elev,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_max_temp<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_max_temp,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_min_temp<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_min_temp,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_canopy<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_canopy,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_precip<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_precip,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_elev_canopy<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_elev_canopy,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_elev_precip<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_elev_precip,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_max_temp_canopy<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_max_temp_canopy,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_max_temp_precip<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_max_temp_precip,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_canopy_precip<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_canopy_precip,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_canopy_min_temp<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_canopy_min_temp,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+
+out_min_temp_precip<-jags(data=jags_data,parameters.to.save=c("loglik"),model.file=mod_min_temp_precip,
+              n.chains=3,
+              n.iter=2000,
+              n.burnin=500,
+              n.thin=10)
+```
    
 7. Use `loo()` in the loo package to calculate the loo for each model. `loo()` expects as input a matrix of your log-likelihoods for every point ($\widehat{elpd}$). You can extract this for each model using `MCMCchains(..., params = "loglik")`.^[Make sure that you are only including `loglik` as the parameter sent to `loo()`] Store the LOOIC values in a data.frame. Include a column for `model` in your data.frame that includes a text descriptor of each of your models (question #4). 
-    ```{r}
-    
-    ```
+```{r}
+loglik_null=MCMCchains(out_null,params="loglik")
+loo_null=loo(loglik_null)
+df_null=data.frame(model="null",LOOIC=loo_null$looic)
+
+loglik_canopy=MCMCchains(out_canopy,params="loglik")
+loo_canopy=loo(loglik_canopy)
+df_canopy=data.frame(model="canopy",LOOIC=loo_canopy$looic)
+
+loglik_canopy_min_temp=MCMCchains(out_canopy_min_temp,params="loglik")
+loo_canopy_min_temp=loo(loglik_canopy_min_temp)
+df_canopy_min_temp=data.frame(model="canopy_min_temp",LOOIC=loo_canopy_min_temp$looic)
+
+loglik_canopy_precip=MCMCchains(out_canopy_precip,params="loglik")
+loo_canopy_precip=loo(loglik_canopy_precip)
+df_canopy_precip=data.frame(model="canopy_precip",LOOIC=loo_canopy_precip$looic)
+
+loglik_elev=MCMCchains(out_elev,params="loglik")
+loo_elev=loo(loglik_elev)
+df_elev=data.frame(model="elev",LOOIC=loo_elev$looic)
+
+loglik_elev_canopy=MCMCchains(out_elev_canopy,params="loglik")
+loo_elev_canopy=loo(loglik_elev_canopy)
+df_elev_canopy=data.frame(model="elev_canopy",LOOIC=loo_elev_canopy$looic)
+
+loglik_elev_precip=MCMCchains(out_elev_precip,params="loglik")
+loo_elev_precip=loo(loglik_elev_precip)
+df_elev_precip=data.frame(model="elev_precip",LOOIC=loo_elev_precip$looic)
+
+loglik_max_temp=MCMCchains(out_max_temp,params="loglik")
+loo_max_temp=loo(loglik_max_temp)
+df_max_temp=data.frame(model="max_temp",LOOIC=loo_max_temp$looic)
+
+loglik_max_temp_canopy=MCMCchains(out_max_temp_canopy,params="loglik")
+loo_max_temp_canopy=loo(loglik_max_temp_canopy)
+df_max_temp_canopy=data.frame(model="max_temp_canopy",LOOIC=loo_max_temp_canopy$looic)
+
+loglik_max_temp_precip=MCMCchains(out_max_temp_precip,params="loglik")
+loo_max_temp_precip=loo(loglik_max_temp_precip)
+df_max_temp_precip=data.frame(model="max_temp_precip",LOOIC=loo_max_temp_precip$looic)
+
+loglik_min_temp=MCMCchains(out_min_temp,params="loglik")
+loo_min_temp=loo(loglik_min_temp)
+df_min_temp=data.frame(model="min_temp",LOOIC=loo_min_temp$looic)
+
+loglik_min_temp_precip=MCMCchains(out_min_temp_precip,params="loglik")
+loo_min_temp_precip=loo(loglik_min_temp_precip)
+df_min_temp_precip=data.frame(model="min_temp_precip",LOOIC=loo_min_temp_precip$looic)
+
+loglik_precip=MCMCchains(out_precip,params="loglik")
+loo_precip=loo(loglik_precip)
+df_precip=data.frame(model="precip",LOOIC=loo_precip$looic)
+
+loo_df <- rbind(
+  df_null,
+  df_elev,
+  df_max_temp,
+  df_min_temp,
+  df_canopy,
+  df_precip,
+  df_elev_canopy,
+  df_elev_precip,
+  df_max_temp_canopy,
+  df_max_temp_precip,
+  df_canopy_precip,
+  df_canopy_min_temp,
+  df_min_temp_precip
+)
+
+```
     
 8. Sort your table such that the lowest LOOIC model is at the top. Add a column called "delta" which calculates $\Delta LOOIC$. 
-    ```{r}
-    
-    ```
+```{r}
+loo_df=loo_df[order(loo_df$LOOIC),]
+loo_df$delta=loo_df$LOOIC-min(loo_df$LOOIC)
+loo_df   
+```
       
 9. Display your LOOIC table below (you can un-comment the code):
-    ```{r, echo = FALSE}
-  #kable(YOUR_DATAFRAME_HERE, "html") %>%
-  #kable_styling(full_width = FALSE) %>%
-  #column_spec(1, extra_css = "padding-right: 50px;")
-    ```
+```{r, echo = FALSE}
+  kable(loo_df, "html") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, extra_css = "padding-right: 50px;")
+```
  
 10. What do you conclude about the factors explaining the occurrence of the Accidental Quail? What do you report back to Dr. FitzFutzypants?
-    ```{r}
-    
-    ```
+```{r}
+#Here we can understand that the best model is the model that include both canopy and minimum temperature as the covariates (LOOIC=1136.002). Furthermore, there are 2 more models with substantial support (delta LOOIC<2): the model that include elevation and canopy and the model that include maximum temperature and canopy. Thus to report back, it is safe to say that the data provide substantial support canopy cover can explain the occurrence of accidental quail. Furthermore, both elevation, maximum temperature, minimum temperature and precipitation have a very weak explanatory power on the occurrence of the Accidental Quail. Lastly, adding canopy into the model will improve the model performance.
+```
